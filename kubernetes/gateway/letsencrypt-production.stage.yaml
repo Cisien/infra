@@ -1,0 +1,20 @@
+# Production Let's Encrypt issuer. Apply only after WAN TCP 80 and TCP 443
+# forward to the Cilium Gateway address. The HTTP-01 solver creates a temporary
+# HTTPRoute on gateway-system/public.
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-production
+spec:
+  acme:
+    email: certs@cisien.com
+    server: https://acme-v02.api.letsencrypt.org/directory
+    privateKeySecretRef:
+      name: letsencrypt-production-account
+    solvers:
+      - http01:
+          gatewayHTTPRoute:
+            parentRefs:
+              - name: public
+                namespace: gateway-system
+                kind: Gateway

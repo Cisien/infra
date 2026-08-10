@@ -1,0 +1,191 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: cert-manager
+  namespace: monitoring
+  labels:
+    release: monitoring
+spec:
+  namespaceSelector:
+    matchNames:
+      - cert-manager
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: cert-manager
+  endpoints:
+    - port: http-metrics
+      interval: 60s
+      scrapeTimeout: 30s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: cert-manager-webhook
+  namespace: monitoring
+  labels:
+    release: monitoring
+spec:
+  namespaceSelector:
+    matchNames:
+      - cert-manager
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: webhook
+      app.kubernetes.io/instance: cert-manager
+  endpoints:
+    - port: metrics
+      interval: 60s
+      scrapeTimeout: 30s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: grafana-operator
+  namespace: monitoring
+  labels:
+    release: monitoring
+spec:
+  namespaceSelector:
+    matchNames:
+      - grafana-operator
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: operator
+      app.kubernetes.io/instance: grafana-operator
+  endpoints:
+    - port: metrics
+      interval: 60s
+      scrapeTimeout: 30s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: ceph-csi-rbd
+  namespace: monitoring
+  labels:
+    release: monitoring
+spec:
+  namespaceSelector:
+    matchNames:
+      - ceph-csi-rbd
+  selector:
+    matchLabels:
+      app: ceph-csi-rbd
+  endpoints:
+    - port: http-metrics
+      interval: 60s
+      scrapeTimeout: 30s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: sealed-secrets
+  namespace: monitoring
+  labels:
+    release: monitoring
+spec:
+  namespaceSelector:
+    matchNames:
+      - kube-system
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: metrics
+      app.kubernetes.io/instance: sealed-secrets
+  endpoints:
+    - port: metrics
+      interval: 60s
+      scrapeTimeout: 30s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: karpenter-proxmox
+  namespace: monitoring
+  labels:
+    release: monitoring
+spec:
+  namespaceSelector:
+    matchNames:
+      - kube-system
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: karpenter-proxmox
+      app.kubernetes.io/name: karpenter-provider-proxmox
+  podMetricsEndpoints:
+    - port: metrics
+      interval: 60s
+      scrapeTimeout: 30s
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ceph-mgr-metrics
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: ceph-mgr-metrics
+spec:
+  ports:
+    - name: metrics
+      port: 9283
+      protocol: TCP
+---
+# Prometheus Operator currently renders ServiceMonitors with legacy Endpoints
+# discovery. These three addresses are the Ceph manager-capable Proxmox nodes.
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: ceph-mgr-metrics
+  namespace: monitoring
+subsets:
+  - addresses:
+      - ip: 172.16.0.11
+      - ip: 172.16.0.12
+      - ip: 172.16.0.14
+    ports:
+      - name: metrics
+        port: 9283
+        protocol: TCP
+---
+apiVersion: discovery.k8s.io/v1
+kind: EndpointSlice
+metadata:
+  name: ceph-mgr-metrics
+  namespace: monitoring
+  labels:
+    kubernetes.io/service-name: ceph-mgr-metrics
+    endpointslice.kubernetes.io/managed-by: manual
+addressType: IPv4
+ports:
+  - name: metrics
+    port: 9283
+    protocol: TCP
+endpoints:
+  - addresses:
+      - 172.16.0.11
+    conditions:
+      ready: true
+  - addresses:
+      - 172.16.0.12
+    conditions:
+      ready: true
+  - addresses:
+      - 172.16.0.14
+    conditions:
+      ready: true
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: ceph-mgr-metrics
+  namespace: monitoring
+  labels:
+    release: monitoring
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: ceph-mgr-metrics
+  endpoints:
+    - port: metrics
+      path: /metrics
+      interval: 60s
+      scrapeTimeout: 30s

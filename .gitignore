@@ -1,0 +1,12 @@
+.terraform/
+__pycache__/
+*.py[cod]
+*.tfstate
+*.tfstate.*
+crash.log
+terraform.tfvars
+talosconfig
+kubeconfig
+kubernetes/karpenter/proxmox-config.secret.yaml
+kubernetes/karpenter/talos-values.secret.yaml
+kubernetes/gateway/gateway-tls.secret.yaml

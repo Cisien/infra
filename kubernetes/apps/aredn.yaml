@@ -1,0 +1,280 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: aredn-metrics
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: aredn-metrics
+spec:
+  ports:
+    - name: metrics
+      port: 80
+      protocol: TCP
+---
+# Prometheus v0.93 discovers ServiceMonitor endpoints through the legacy
+# Endpoints API. Keep this explicit record with the EndpointSlice below.
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: aredn-metrics
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: aredn-metrics
+subsets:
+  - addresses:
+      - ip: 192.168.1.31
+    ports:
+      - name: metrics
+        port: 80
+        protocol: TCP
+---
+apiVersion: discovery.k8s.io/v1
+kind: EndpointSlice
+metadata:
+  name: aredn-metrics
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: aredn-metrics
+    kubernetes.io/service-name: aredn-metrics
+addressType: IPv4
+ports:
+  - name: metrics
+    protocol: TCP
+    port: 80
+endpoints:
+  - addresses:
+      - 192.168.1.31
+    conditions:
+      ready: true
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: aredn-metrics
+  namespace: monitoring
+  labels:
+    release: monitoring
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: aredn-metrics
+  namespaceSelector:
+    matchNames:
+      - monitoring
+  endpoints:
+    - port: metrics
+      path: /cgi-bin/metrics
+      interval: 30s
+      scrapeTimeout: 10s
+---
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaFolder
+metadata:
+  name: amateur-radio
+  namespace: monitoring
+spec:
+  title: Amateur Radio
+  instanceSelector:
+    matchLabels:
+      dashboards: monitoring-grafana
+---
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaDashboard
+metadata:
+  name: aredn
+  namespace: monitoring
+spec:
+  folderRef: amateur-radio
+  instanceSelector:
+    matchLabels:
+      dashboards: monitoring-grafana
+  json: |
+    {
+      "annotations": {"list": []},
+      "description": "An amateur radio WiFi mesh service. Metrics are scraped from the AREDN node at 192.168.1.31.",
+      "editable": true,
+      "fiscalYearStartMonth": 0,
+      "graphTooltip": 0,
+      "links": [],
+      "panels": [
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "mappings": [{"options": {"0": {"color": "red", "index": 0, "text": "Down"}, "1": {"color": "green", "index": 1, "text": "Up"}}, "type": "value"}], "thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": null}, {"color": "green", "value": 1}]}}, "overrides": []},
+          "gridPos": {"h": 4, "w": 5, "x": 0, "y": 0},
+          "id": 1,
+          "options": {"colorMode": "background", "graphMode": "none", "justifyMode": "center", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto"},
+          "targets": [{"expr": "up{job=\"aredn-metrics\",instance=~\"$instance\"}", "refId": "A"}],
+          "title": "Target",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": null}, {"color": "green", "value": 1}]}}, "overrides": []},
+          "gridPos": {"h": 4, "w": 5, "x": 5, "y": 0},
+          "id": 2,
+          "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "center", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto"},
+          "targets": [{"expr": "node_babel_neighbor_total{job=\"aredn-metrics\",instance=~\"$instance\"}", "refId": "A"}],
+          "title": "Babel Neighbors",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": null}, {"color": "green", "value": 1}]}}, "overrides": []},
+          "gridPos": {"h": 4, "w": 5, "x": 10, "y": 0},
+          "id": 3,
+          "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "center", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto"},
+          "targets": [{"expr": "node_babel_route_total{job=\"aredn-metrics\",instance=~\"$instance\"}", "refId": "A"}],
+          "title": "Babel Routes",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": null}, {"color": "green", "value": 1}]}}, "overrides": []},
+          "gridPos": {"h": 4, "w": 5, "x": 15, "y": 0},
+          "id": 4,
+          "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "center", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto"},
+          "targets": [{"expr": "node_babel_xroute_total{job=\"aredn-metrics\",instance=~\"$instance\"}", "refId": "A"}],
+          "title": "Babel XRoutes",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "unit": "percent", "min": 0, "max": 100, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "orange", "value": 75}, {"color": "red", "value": 90}]}}, "overrides": []},
+          "gridPos": {"h": 4, "w": 4, "x": 20, "y": 0},
+          "id": 5,
+          "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "center", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto"},
+          "targets": [{"expr": "100 * (1 - node_memory_MemAvailable_bytes{job=\"aredn-metrics\",instance=~\"$instance\"} / node_memory_MemTotal_bytes{job=\"aredn-metrics\",instance=~\"$instance\"})", "refId": "A"}],
+          "title": "Memory Used",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"drawStyle": "line", "lineInterpolation": "smooth", "lineWidth": 2, "fillOpacity": 10, "showPoints": "never", "spanNulls": true}, "unit": "short"}, "overrides": []},
+          "gridPos": {"h": 8, "w": 8, "x": 0, "y": 4},
+          "id": 6,
+          "options": {"legend": {"calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
+          "targets": [
+            {"expr": "node_load1{job=\"aredn-metrics\",instance=~\"$instance\"}", "legendFormat": "1 minute", "refId": "A"},
+            {"expr": "node_load5{job=\"aredn-metrics\",instance=~\"$instance\"}", "legendFormat": "5 minutes", "refId": "B"},
+            {"expr": "node_load15{job=\"aredn-metrics\",instance=~\"$instance\"}", "legendFormat": "15 minutes", "refId": "C"}
+          ],
+          "title": "System Load",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"drawStyle": "line", "lineInterpolation": "smooth", "lineWidth": 2, "fillOpacity": 10, "showPoints": "never", "spanNulls": true}, "unit": "percent"}, "overrides": []},
+          "gridPos": {"h": 8, "w": 8, "x": 8, "y": 4},
+          "id": 7,
+          "options": {"legend": {"calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
+          "targets": [{"expr": "100 * (1 - avg by(instance) (rate(node_cpu_seconds_total{job=\"aredn-metrics\",instance=~\"$instance\",mode=\"idle\"}[5m])))", "legendFormat": "CPU used", "refId": "A"}],
+          "title": "CPU Used",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"drawStyle": "line", "lineInterpolation": "smooth", "lineWidth": 2, "fillOpacity": 10, "showPoints": "never", "spanNulls": true}, "unit": "percent"}, "overrides": []},
+          "gridPos": {"h": 8, "w": 8, "x": 16, "y": 4},
+          "id": 8,
+          "options": {"legend": {"calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
+          "targets": [{"expr": "100 * (1 - node_filesystem_avail_bytes{job=\"aredn-metrics\",instance=~\"$instance\",mountpoint=\"/overlay\"} / node_filesystem_size_bytes{job=\"aredn-metrics\",instance=~\"$instance\",mountpoint=\"/overlay\"})", "legendFormat": "Overlay filesystem", "refId": "A"}],
+          "title": "Overlay Storage Used",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"drawStyle": "line", "lineInterpolation": "smooth", "lineWidth": 2, "fillOpacity": 10, "showPoints": "never", "spanNulls": true}, "unit": "bps"}, "overrides": []},
+          "gridPos": {"h": 9, "w": 12, "x": 0, "y": 12},
+          "id": 9,
+          "options": {"legend": {"calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
+          "targets": [
+            {"expr": "sum by(device) (rate(node_network_receive_bytes_total{job=\"aredn-metrics\",instance=~\"$instance\",device!=\"lo\"}[5m])) * 8", "legendFormat": "{{device}} RX", "refId": "A"},
+            {"expr": "sum by(device) (rate(node_network_transmit_bytes_total{job=\"aredn-metrics\",instance=~\"$instance\",device!=\"lo\"}[5m])) * 8", "legendFormat": "{{device}} TX", "refId": "B"}
+          ],
+          "title": "Network Traffic",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"drawStyle": "line", "lineInterpolation": "smooth", "lineWidth": 2, "fillOpacity": 10, "showPoints": "never", "spanNulls": true}, "unit": "ops"}, "overrides": []},
+          "gridPos": {"h": 9, "w": 12, "x": 12, "y": 12},
+          "id": 10,
+          "options": {"legend": {"calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
+          "targets": [
+            {"expr": "sum(rate(node_arednlink_connection_incoming_total{job=\"aredn-metrics\",instance=~\"$instance\"}[5m]))", "legendFormat": "Connection in", "refId": "A"},
+            {"expr": "sum(rate(node_arednlink_connection_outgoing_total{job=\"aredn-metrics\",instance=~\"$instance\"}[5m]))", "legendFormat": "Connection out", "refId": "B"},
+            {"expr": "sum(rate(node_arednlink_sync_incoming_total{job=\"aredn-metrics\",instance=~\"$instance\"}[5m]))", "legendFormat": "Sync in", "refId": "C"},
+            {"expr": "sum(rate(node_arednlink_sync_outgoing_total{job=\"aredn-metrics\",instance=~\"$instance\"}[5m]))", "legendFormat": "Sync out", "refId": "D"},
+            {"expr": "sum(rate(node_arednlink_keepalive_incoming_total{job=\"aredn-metrics\",instance=~\"$instance\"}[5m]))", "legendFormat": "Keepalive in", "refId": "E"},
+            {"expr": "sum(rate(node_arednlink_keepalive_outgoing_total{job=\"aredn-metrics\",instance=~\"$instance\"}[5m]))", "legendFormat": "Keepalive out", "refId": "F"}
+          ],
+          "title": "AREDNLink Message Rate",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"drawStyle": "line", "lineInterpolation": "smooth", "lineWidth": 2, "fillOpacity": 10, "showPoints": "never", "spanNulls": true}, "unit": "ops"}, "overrides": []},
+          "gridPos": {"h": 9, "w": 12, "x": 0, "y": 21},
+          "id": 11,
+          "options": {"legend": {"calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
+          "targets": [
+            {"expr": "sum(rate(node_arednlink_connection_error_total{job=\"aredn-metrics\",instance=~\"$instance\"}[5m]))", "legendFormat": "Connection errors", "refId": "A"},
+            {"expr": "sum(rate(node_arednlink_version_error_total{job=\"aredn-metrics\",instance=~\"$instance\"}[5m]))", "legendFormat": "Version errors", "refId": "B"},
+            {"expr": "sum(rate(node_arednlink_hop_error_total{job=\"aredn-metrics\",instance=~\"$instance\"}[5m]))", "legendFormat": "Hop errors", "refId": "C"},
+            {"expr": "sum(rate(node_arednlink_command_error_total{job=\"aredn-metrics\",instance=~\"$instance\"}[5m]))", "legendFormat": "Command errors", "refId": "D"},
+            {"expr": "sum(rate(node_arednlink_badcrc_incoming_total{job=\"aredn-metrics\",instance=~\"$instance\"}[5m]))", "legendFormat": "Bad CRC", "refId": "E"}
+          ],
+          "title": "AREDNLink Error Rate",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"custom": {"align": "auto", "cellOptions": {"type": "auto"}, "inspect": false}, "mappings": []}, "overrides": []},
+          "gridPos": {"h": 9, "w": 12, "x": 12, "y": 21},
+          "id": 12,
+          "options": {"cellHeight": "sm", "showHeader": true},
+          "targets": [{"expr": "node_aredn_meshrf{job=\"aredn-metrics\",instance=~\"$instance\"}", "format": "table", "instant": true, "refId": "A"}],
+          "title": "Mesh RF",
+          "transformations": [{"id": "labelsToFields", "options": {}}],
+          "type": "table"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"custom": {"align": "auto", "cellOptions": {"type": "auto"}, "inspect": false}, "mappings": []}, "overrides": []},
+          "gridPos": {"h": 8, "w": 24, "x": 0, "y": 30},
+          "id": 13,
+          "options": {"cellHeight": "sm", "showHeader": true},
+          "targets": [{"expr": "node_aredn_info{job=\"aredn-metrics\",instance=~\"$instance\"}", "format": "table", "instant": true, "refId": "A"}],
+          "title": "AREDN Node Information",
+          "transformations": [{"id": "labelsToFields", "options": {}}],
+          "type": "table"
+        }
+      ],
+      "refresh": "30s",
+      "schemaVersion": 41,
+      "tags": ["aredn", "amateur-radio", "mesh", "wifi"],
+      "templating": {
+        "list": [
+          {
+            "current": {"selected": false, "text": "All", "value": "$__all"},
+            "datasource": {"type": "prometheus", "uid": "prometheus"},
+            "definition": "label_values(up{job=\"aredn-metrics\"}, instance)",
+            "includeAll": true,
+            "label": "Instance",
+            "multi": true,
+            "name": "instance",
+            "options": [],
+            "query": {"query": "label_values(up{job=\"aredn-metrics\"}, instance)", "refId": "PrometheusVariableQueryEditor-VariableQuery"},
+            "refresh": 1,
+            "regex": "",
+            "type": "query"
+          }
+        ]
+      },
+      "time": {"from": "now-6h", "to": "now"},
+      "timezone": "browser",
+      "title": "Aredn -- an amateur radio wifi mesh service",
+      "uid": "aredn-mesh",
+      "version": 1,
+      "weekStart": ""
+    }

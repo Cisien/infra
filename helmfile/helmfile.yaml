@@ -1,0 +1,108 @@
+repositories:
+  - name: cilium
+    url: https://helm.cilium.io/
+  - name: csi-driver-nfs
+    url: https://raw.githubusercontent.com/kubernetes-csi/csi-driver-nfs/master/charts
+  - name: ceph-csi
+    url: https://ceph.github.io/csi-charts
+  - name: metrics-server
+    url: https://kubernetes-sigs.github.io/metrics-server/
+  - name: prometheus-community
+    url: https://prometheus-community.github.io/helm-charts
+  - name: jetstack
+    url: https://charts.jetstack.io
+
+releases:
+  - name: cilium
+    namespace: kube-system
+    chart: cilium/cilium
+    version: 1.20.0
+    values:
+      - values/cilium-values.yaml.gotmpl
+
+  - name: csi-driver-nfs
+    namespace: kube-system
+    chart: csi-driver-nfs/csi-driver-nfs
+    version: 4.13.4
+    needs:
+      - kube-system/cilium
+    values:
+      - values/nfs-csi-values.yaml
+
+  - name: ceph-csi-rbd
+    namespace: ceph-csi-rbd
+    chart: ceph-csi/ceph-csi-rbd
+    version: 3.17.0
+    needs:
+      - kube-system/cilium
+    values:
+      - values/ceph-csi-rbd-values.yaml
+
+  - name: metrics-server
+    namespace: kube-system
+    chart: metrics-server/metrics-server
+    version: 3.13.1
+    needs:
+      - kube-system/cilium
+    values:
+      - values/metrics-server-values.yaml
+
+  - name: grafana-operator
+    namespace: grafana-operator
+    createNamespace: true
+    chart: oci://ghcr.io/grafana/helm-charts/grafana-operator
+    version: 5.24.0
+    needs:
+      - kube-system/cilium
+
+  - name: monitoring
+    namespace: monitoring
+    chart: prometheus-community/kube-prometheus-stack
+    version: 88.2.0
+    needs:
+      - kube-system/metrics-server
+      - ceph-csi-rbd/ceph-csi-rbd
+      - grafana-operator/grafana-operator
+    values:
+      - values/monitoring-values.yaml
+
+  - name: snmp-exporter
+    namespace: monitoring
+    chart: prometheus-community/prometheus-snmp-exporter
+    version: 9.17.0
+    needs:
+      - monitoring/monitoring
+    values:
+      - values/snmp-exporter-values.yaml
+
+  - name: cert-manager
+    namespace: cert-manager
+    chart: jetstack/cert-manager
+    version: v1.21.1
+    needs:
+      - kube-system/cilium
+    values:
+      - crds:
+          enabled: true
+      - config:
+          gatewayAPI:
+            enabled: true
+
+  - name: sealed-secrets
+    namespace: kube-system
+    # Artifact Hub identifies the published chart package. The historical
+    # GitHub Pages repository now returns 404, and this direct package URL is
+    # the verified release artifact for chart version 2.18.6.
+    chart: https://github.com/bitnami-labs/sealed-secrets/releases/download/helm-v2.18.6/sealed-secrets-2.18.6.tgz
+    version: 2.18.6
+    needs:
+      - kube-system/cilium
+
+  - name: karpenter-proxmox
+    namespace: kube-system
+    chart: oci://ghcr.io/sergelogvinov/charts/karpenter-provider-proxmox
+    version: 0.4.9
+    needs:
+      - kube-system/cilium
+    values:
+      - values/karpenter-values.yaml

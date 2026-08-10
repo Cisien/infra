@@ -1,0 +1,4 @@
+# The NAS endpoint and export belong in the StorageClass, not Helm values.
+# This chart installs only the NFS CSI driver.
+controller:
+  replicas: 1

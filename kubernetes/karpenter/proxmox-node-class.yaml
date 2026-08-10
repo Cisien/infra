@@ -1,0 +1,26 @@
+apiVersion: karpenter.proxmox.sinextra.dev/v1alpha1
+kind: ProxmoxNodeClass
+metadata:
+  name: talos-workers
+spec:
+  region: homelab
+  placementStrategy:
+    zoneBalance: Balanced
+  instanceTemplateRef:
+    kind: ProxmoxTemplate
+    name: talos-worker
+  bootDevice:
+    size: 80Gi
+    storage: local-storage-pool
+  metadataOptions:
+    type: cdrom
+    templatesRef:
+      name: karpenter-talos-template
+      namespace: kube-system
+    valuesRef:
+      name: karpenter-talos-values
+      namespace: kube-system
+  tags:
+    - kubernetes
+    - talos
+    - karpenter

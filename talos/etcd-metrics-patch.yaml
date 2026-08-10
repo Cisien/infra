@@ -1,0 +1,7 @@
+# Expose the Talos-managed etcd Prometheus endpoint for the in-cluster
+# kube-prometheus-stack ServiceMonitor. Talos requires a reboot after this
+# machine configuration change.
+cluster:
+  etcd:
+    extraArgs:
+      listen-metrics-urls: http://0.0.0.0:2381

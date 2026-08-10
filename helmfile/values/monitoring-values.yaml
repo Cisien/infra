@@ -1,0 +1,87 @@
+# Prometheus and Grafana are stateful. Both use RWO Ceph RBD only.
+# Configuration is delivered as Helm-generated ConfigMaps and Secrets, not NFS.
+alertmanager:
+  enabled: false
+
+defaultRules:
+  rules:
+    alertmanager: false
+    kubeControllerManager: false
+    kubeSchedulerAlerting: false
+    kubeSchedulerRecording: false
+
+# Talos exposes the controller manager and scheduler metrics only on local
+# loopback. Do not create permanently down remote scrape targets.
+kubeControllerManager:
+  enabled: false
+kubeScheduler:
+  enabled: false
+
+# Talos etcd needs an explicit listen-metrics-urls machine configuration patch.
+# The listed external endpoints cause kube-prometheus-stack to own the Service
+# and legacy Endpoints object used by its existing etcd ServiceMonitor.
+kubeEtcd:
+  endpoints:
+    - 172.16.0.230
+    - 172.16.0.231
+    - 172.16.0.232
+  service:
+    selector: {}
+
+# Node Exporter alone needs privileged host access. Keep the Prometheus and
+# Grafana namespace restricted.
+prometheus-node-exporter:
+  namespaceOverride: monitoring-node-exporter
+
+grafana:
+  grafana.ini:
+    server:
+      domain: dash.cisien.dev
+      root_url: https://dash.cisien.dev/
+  service:
+    type: ClusterIP
+  admin:
+    existingSecret: grafana-admin
+    userKey: admin-user
+    passwordKey: admin-password
+  persistence:
+    enabled: true
+    type: sts
+    storageClassName: proxmox-ceph-rbd
+    accessModes:
+      - ReadWriteOnce
+    size: 5Gi
+  # The Grafana Operator reconciles the chart-generated dashboard ConfigMaps
+  # through GrafanaDashboard CRs. Keep the Prometheus datasource provisioned by
+  # kube-prometheus-stack so Grafana starts with a working default datasource.
+  operator:
+    dashboardsConfigMapRefEnabled: true
+    matchLabels:
+      dashboards: monitoring-grafana
+    folder: null
+    folderRef: kubernetes-monitoring
+  sidecar:
+    dashboards:
+      enabled: false
+    datasources:
+      alertmanager:
+        enabled: false
+
+prometheus:
+  prometheusSpec:
+    replicas: 1
+    retention: 15d
+    retentionSize: 20GiB
+    resources:
+      requests:
+        cpu: 250m
+        memory: 1Gi
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: proxmox-ceph-rbd
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 25Gi

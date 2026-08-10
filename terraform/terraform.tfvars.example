@@ -1,0 +1,29 @@
+# Copy to terraform.tfvars. This file has placeholders by design.
+# Do not use an existing address until you verify it is free or reserve it in DHCP/DNS.
+
+proxmox_api_token = "root@pam!terraform=REPLACE_WITH_DEDICATED_TOKEN_SECRET"
+
+# Create this URL in Talos Image Factory. Choose the nocloud amd64 raw image.
+# Keep this Talos release equal to talos_version above.
+talos_image_url = "https://factory.talos.dev/image/376567988ad370138ad8b2698212367b8edcb69b5fd68c80be1f2ec7d603b4ba/v1.13.8/nocloud-amd64.raw.xz"
+
+# Temporary non-HA API endpoint. Replace this with a VIP/load balancer before
+# relying on control-plane failover.
+cluster_endpoint = "https://172.16.0.230:6443"
+
+network = {
+  gateway     = "172.16.0.1"
+  nameservers = ["172.16.0.1"]
+  cidr        = "172.16.0.0/24"
+  bridge      = "vmbr0"
+  # vlan_id = 123
+}
+
+# Talos images download to shared `share` storage, which supports Proxmox
+# `import` content. VM disks use the selected per-node zfspool storage.
+# pve-02 and pve-03 use local-storage-pool; pve-04 uses ssd-pool.
+control_planes = {
+  cp-01 = { proxmox_node = "pve-02", storage_pool = "local-storage-pool", ipv4_address = "172.16.0.230", vm_id = 2301 }
+  cp-02 = { proxmox_node = "pve-03", storage_pool = "local-storage-pool", ipv4_address = "172.16.0.231", vm_id = 2302 }
+  cp-03 = { proxmox_node = "pve-04", storage_pool = "ssd-pool", ipv4_address = "172.16.0.232", vm_id = 2303 }
+}

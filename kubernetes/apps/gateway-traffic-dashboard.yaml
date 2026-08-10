@@ -1,0 +1,155 @@
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaDashboard
+metadata:
+  name: gateway-ingress-traffic
+  namespace: monitoring
+spec:
+  folderRef: kubernetes-monitoring
+  instanceSelector:
+    matchLabels:
+      dashboards: monitoring-grafana
+  json: |
+    {
+      "annotations": {"list": []},
+      "description": "Incoming traffic through the Cilium Gateway API public Gateway. Backend series match gateway-system/cilium-gateway-public.",
+      "editable": true,
+      "graphTooltip": 0,
+      "links": [],
+      "panels": [
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "unit": "reqps"}, "overrides": []},
+          "gridPos": {"h": 4, "w": 5, "x": 0, "y": 0},
+          "id": 1,
+          "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "center", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto"},
+          "targets": [{"expr": "sum(rate(envoy_cluster_upstream_rq_total{job=\"cilium-envoy\",envoy_cluster_name=~\"gateway-system/cilium-gateway-public/.*\"}[$__rate_interval]))", "refId": "A"}],
+          "title": "Gateway Requests/s",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "unit": "short"}, "overrides": []},
+          "gridPos": {"h": 4, "w": 5, "x": 5, "y": 0},
+          "id": 2,
+          "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "center", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto"},
+          "targets": [{"expr": "sum(envoy_http_downstream_cx_active{job=\"cilium-envoy\",envoy_http_conn_manager_prefix=~\"listener-(secure|insecure)\"})", "refId": "A"}],
+          "title": "Active Gateway Connections",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "unit": "reqps", "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "orange", "value": 0.1}, {"color": "red", "value": 1}]}}, "overrides": []},
+          "gridPos": {"h": 4, "w": 5, "x": 10, "y": 0},
+          "id": 3,
+          "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "center", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto"},
+          "targets": [{"expr": "sum(rate(envoy_cluster_upstream_rq_xx{job=\"cilium-envoy\",envoy_cluster_name=~\"gateway-system/cilium-gateway-public/.*\",envoy_response_code_class=\"4\"}[$__rate_interval]))", "refId": "A"}],
+          "title": "Gateway 4xx/s",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "unit": "reqps", "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "orange", "value": 0.01}, {"color": "red", "value": 0.1}]}}, "overrides": []},
+          "gridPos": {"h": 4, "w": 5, "x": 15, "y": 0},
+          "id": 4,
+          "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "center", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto"},
+          "targets": [{"expr": "sum(rate(envoy_cluster_upstream_rq_xx{job=\"cilium-envoy\",envoy_cluster_name=~\"gateway-system/cilium-gateway-public/.*\",envoy_response_code_class=\"5\"}[$__rate_interval]))", "refId": "A"}],
+          "title": "Gateway 5xx/s",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "unit": "ms"}, "overrides": []},
+          "gridPos": {"h": 4, "w": 4, "x": 20, "y": 0},
+          "id": 5,
+          "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "center", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto"},
+          "targets": [{"expr": "histogram_quantile(0.95, sum by (le) (rate(envoy_cluster_upstream_rq_time_bucket{job=\"cilium-envoy\",envoy_cluster_name=~\"gateway-system/cilium-gateway-public/.*\"}[$__rate_interval])))", "refId": "A"}],
+          "title": "Backend p95 Latency",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"drawStyle": "line", "fillOpacity": 10, "lineInterpolation": "smooth", "lineWidth": 2, "showPoints": "never", "spanNulls": true}, "unit": "reqps"}, "overrides": []},
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4},
+          "id": 6,
+          "options": {"legend": {"calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
+          "targets": [{"expr": "sum by (envoy_cluster_name) (rate(envoy_cluster_upstream_rq_total{job=\"cilium-envoy\",envoy_cluster_name=~\"$backend\"}[$__rate_interval]))", "legendFormat": "{{envoy_cluster_name}}", "refId": "A"}],
+          "title": "Requests by Gateway Backend",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"drawStyle": "line", "fillOpacity": 10, "lineInterpolation": "smooth", "lineWidth": 2, "showPoints": "never", "spanNulls": true}, "unit": "Bps"}, "overrides": []},
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4},
+          "id": 7,
+          "options": {"legend": {"calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
+          "targets": [
+            {"expr": "sum by (envoy_cluster_name) (rate(envoy_cluster_upstream_cx_tx_bytes_total{job=\"cilium-envoy\",envoy_cluster_name=~\"$backend\"}[$__rate_interval]))", "legendFormat": "{{envoy_cluster_name}} request", "refId": "A"},
+            {"expr": "sum by (envoy_cluster_name) (rate(envoy_cluster_upstream_cx_rx_bytes_total{job=\"cilium-envoy\",envoy_cluster_name=~\"$backend\"}[$__rate_interval]))", "legendFormat": "{{envoy_cluster_name}} response", "refId": "B"}
+          ],
+          "title": "Traffic to and from Gateway Backends",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"drawStyle": "line", "fillOpacity": 10, "lineInterpolation": "smooth", "lineWidth": 2, "showPoints": "never", "spanNulls": true}, "unit": "reqps"}, "overrides": []},
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 12},
+          "id": 8,
+          "options": {"legend": {"calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
+          "targets": [{"expr": "sum by (envoy_response_code_class) (rate(envoy_cluster_upstream_rq_xx{job=\"cilium-envoy\",envoy_cluster_name=~\"$backend\"}[$__rate_interval]))", "legendFormat": "{{envoy_response_code_class}}xx", "refId": "A"}],
+          "title": "Response Classes",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"drawStyle": "line", "fillOpacity": 10, "lineInterpolation": "smooth", "lineWidth": 2, "showPoints": "never", "spanNulls": true}, "unit": "ms"}, "overrides": []},
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 12},
+          "id": 9,
+          "options": {"legend": {"calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
+          "targets": [
+            {"expr": "histogram_quantile(0.50, sum by (le) (rate(envoy_cluster_upstream_rq_time_bucket{job=\"cilium-envoy\",envoy_cluster_name=~\"$backend\"}[$__rate_interval])))", "legendFormat": "p50", "refId": "A"},
+            {"expr": "histogram_quantile(0.95, sum by (le) (rate(envoy_cluster_upstream_rq_time_bucket{job=\"cilium-envoy\",envoy_cluster_name=~\"$backend\"}[$__rate_interval])))", "legendFormat": "p95", "refId": "B"},
+            {"expr": "histogram_quantile(0.99, sum by (le) (rate(envoy_cluster_upstream_rq_time_bucket{job=\"cilium-envoy\",envoy_cluster_name=~\"$backend\"}[$__rate_interval])))", "legendFormat": "p99", "refId": "C"}
+          ],
+          "title": "Gateway Backend Latency",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"custom": {"align": "auto", "cellOptions": {"type": "auto"}, "inspect": false}, "mappings": []}, "overrides": []},
+          "gridPos": {"h": 9, "w": 24, "x": 0, "y": 20},
+          "id": 10,
+          "options": {"cellHeight": "sm", "showHeader": true},
+          "targets": [{"expr": "sum by (envoy_cluster_name, envoy_response_code_class) (increase(envoy_cluster_upstream_rq_xx{job=\"cilium-envoy\",envoy_cluster_name=~\"$backend\"}[$__range]))", "format": "table", "instant": true, "refId": "A"}],
+          "title": "Requests by Backend and Response Class",
+          "transformations": [{"id": "labelsToFields", "options": {}}],
+          "type": "table"
+        }
+      ],
+      "refresh": "30s",
+      "schemaVersion": 41,
+      "tags": ["cilium", "envoy", "gateway", "ingress", "traffic"],
+      "templating": {
+        "list": [
+          {
+            "current": {"selected": false, "text": "All", "value": "$__all"},
+            "datasource": {"type": "prometheus", "uid": "prometheus"},
+            "definition": "label_values(envoy_cluster_upstream_rq_total{job=\"cilium-envoy\",envoy_cluster_name=~\"gateway-system/cilium-gateway-public/.*\"}, envoy_cluster_name)",
+            "includeAll": true,
+            "label": "Gateway backend",
+            "multi": true,
+            "name": "backend",
+            "options": [],
+            "query": {"query": "label_values(envoy_cluster_upstream_rq_total{job=\"cilium-envoy\",envoy_cluster_name=~\"gateway-system/cilium-gateway-public/.*\"}, envoy_cluster_name)", "refId": "PrometheusVariableQueryEditor-VariableQuery"},
+            "refresh": 1,
+            "regex": "",
+            "type": "query"
+          }
+        ]
+      },
+      "time": {"from": "now-6h", "to": "now"},
+      "timezone": "browser",
+      "title": "Gateway Ingress Traffic",
+      "uid": "gateway-ingress-traffic",
+      "version": 1,
+      "weekStart": ""
+    }

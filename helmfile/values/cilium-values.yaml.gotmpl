@@ -1,0 +1,93 @@
+# The temporary cluster endpoint is direct/non-HA. It is reachable from every
+# current and Karpenter-created Talos node.
+k8sServiceHost: {{ requiredEnv "KUBERNETES_API_HOST" | quote }}
+k8sServicePort: 6443
+
+kubeProxyReplacement: true
+ipam:
+  mode: kubernetes
+
+cgroup:
+  autoMount:
+    enabled: false
+  hostRoot: /sys/fs/cgroup
+
+bpf:
+  hostLegacyRouting: true
+
+securityContext:
+  capabilities:
+    ciliumAgent:
+      - CHOWN
+      - KILL
+      - NET_ADMIN
+      - NET_RAW
+      - IPC_LOCK
+      - SYS_ADMIN
+      - SYS_RESOURCE
+      - DAC_OVERRIDE
+      - FOWNER
+      - SETGID
+      - SETUID
+    cleanCiliumState:
+      - NET_ADMIN
+      - SYS_ADMIN
+      - SYS_RESOURCE
+
+routingMode: tunnel
+tunnelProtocol: vxlan
+
+cni:
+  binPath: /opt/cni/bin
+  confPath: /etc/cni/net.d
+
+gatewayAPI:
+  enabled: true
+
+envoy:
+  prometheus:
+    serviceMonitor:
+      enabled: true
+      namespace: monitoring
+      labels:
+        release: monitoring
+
+prometheus:
+  enabled: true
+  serviceMonitor:
+    trustCRDsExist: true
+    enabled: true
+    namespace: monitoring
+    labels:
+      release: monitoring
+
+operator:
+  replicas: 1
+  prometheus:
+    metricsService: true
+    serviceMonitor:
+      enabled: true
+      namespace: monitoring
+      labels:
+        release: monitoring
+
+hubble:
+  metrics:
+    enabled:
+      - dns:query;ignoreAAAA
+      - drop
+      - tcp
+      - flow
+      - icmp
+      - http
+    enableOpenMetrics: true
+    serviceMonitor:
+      enabled: true
+      labels:
+        release: monitoring
+
+l2announcements:
+  enabled: true
+
+externalIPs:
+  enabled: true

@@ -1,0 +1,50 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: searx
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: wavelog
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: external-services
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: open-webui
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ceph-csi-rbd
+  labels:
+    # The RBD CSI node plugin needs host mounts and privileged access to attach
+    # and mount block devices on Kubernetes nodes.
+    pod-security.kubernetes.io/enforce: privileged
+    pod-security.kubernetes.io/audit: privileged
+    pod-security.kubernetes.io/warn: privileged
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: monitoring
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: monitoring-node-exporter
+  labels:
+    # Node Exporter reads host procfs and sysfs and requires host namespaces.
+    pod-security.kubernetes.io/enforce: privileged
+    pod-security.kubernetes.io/audit: privileged
+    pod-security.kubernetes.io/warn: privileged
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: grafana-operator

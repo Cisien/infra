@@ -1,0 +1,18 @@
+resources:
+  - namespaces.yaml
+  - secrets/wavelog-db-env.sealed.yaml
+  - secrets/wavelog-app-env.sealed.yaml
+  - secrets/open-webui-runtime-env.sealed.yaml
+  - secrets/ceph-csi-rbd.sealed.yaml
+  - secrets/grafana-admin.sealed.yaml
+  - secrets/snmp-exporter-config.sealed.yaml
+  - ceph-rbd.yaml
+  - searx.yaml
+  - wavelog.yaml
+  - open-webui.yaml
+  - grafana.yaml
+  - aredn.yaml
+  - gateway-traffic-dashboard.yaml
+  - metrics-integrations.yaml
+  - metrics-dashboards.yaml
+  - external-services.yaml

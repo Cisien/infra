@@ -1,0 +1,17 @@
+# This Secret must exist before the Karpenter Helm release is installed.
+# This controller must remain available when Karpenter-managed workers scale to
+# their two-node baseline or are being replaced.
+nodeSelector:
+  node-role.kubernetes.io/control-plane: ""
+
+# StaticCapacity is required for NodePool.spec.replicas. Keep the current chart
+# feature-gate defaults explicit while enabling the two-worker baseline.
+extraArgs:
+  - --feature-gates=ReservedCapacity=true,SpotToSpotConsolidation=false,NodeRepair=false,NodeOverlay=false,StaticCapacity=true,CapacityBuffer=false
+
+existingConfigSecret: karpenter-provider-proxmox
+existingConfigSecretKey: config.yaml
+
+metrics:
+  enabled: true
+  port: 8080

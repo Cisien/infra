@@ -1,0 +1,3 @@
+resources:
+  - l2-announcement-policy.yaml
+  - gateway-ip-pool.yaml

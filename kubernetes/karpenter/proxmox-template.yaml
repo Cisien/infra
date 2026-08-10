@@ -1,0 +1,41 @@
+# The provider creates worker templates only on PVE hosts that expose this
+# storage pool. The NodePool also has an explicit pve-02/pve-03 zone limit.
+# Do not add ssd-pool here: pve-04 is control-plane-only for elastic workers.
+apiVersion: karpenter.proxmox.sinextra.dev/v1alpha1
+kind: ProxmoxTemplate
+metadata:
+  name: talos-worker
+spec:
+  sourceImage:
+    # Use the uncompressed raw variant of the Terraform Image Factory schematic.
+    # The Karpenter Proxmox provider does not import compressed source images.
+    url: https://factory.talos.dev/image/376567988ad370138ad8b2698212367b8edcb69b5fd68c80be1f2ec7d603b4ba/v1.13.8/nocloud-amd64.raw
+    # Local directory storage now supports `images` and `import` on every PVE
+    # host. It is non-shared, so the provider creates one managed source
+    # template per host instead of selecting only one shared-storage zone.
+    imageName: talos-nocloud-amd64-vlan2000-local.raw
+  storageIDs:
+    - local
+  machine: q35
+  agent:
+    enabled: false
+  cpu:
+    type: x86-64-v2-AES
+  vga:
+    type: serial0
+  network:
+    - name: net0
+      model: virtio
+      # Proxmox SDN VNet workvnet is VLAN 2000 over the VLAN-aware vmbr1 bridge.
+      bridge: workvnet
+      mtu: 1500
+      # Provider-local IPAM for elastic workers. UniFi DHCP uses .2-.191 and
+      # must not allocate from this reserved Karpenter range.
+      address4: 172.16.200.192/26
+      gateway4: 172.16.200.1
+      dnsServers:
+        - 172.16.200.1
+  tags:
+    - kubernetes
+    - talos
+    - karpenter

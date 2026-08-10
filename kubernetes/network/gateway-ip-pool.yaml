@@ -1,0 +1,11 @@
+# 172.16.0.240 is reserved for the public Gateway LoadBalancer Service. It is
+# outside the fixed Talos VM allocation (.230-.233) and must be excluded from
+# DHCP. The Karpenter workers use DHCP on the same LAN.
+apiVersion: cilium.io/v2alpha1
+kind: CiliumLoadBalancerIPPool
+metadata:
+  name: public-gateway
+spec:
+  blocks:
+    - start: 172.16.0.240
+      stop: 172.16.0.240

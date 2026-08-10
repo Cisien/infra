@@ -1,0 +1,44 @@
+apiVersion: grafana.integreatly.org/v1beta1
+kind: Grafana
+metadata:
+  name: monitoring-grafana
+  namespace: monitoring
+  labels:
+    dashboards: monitoring-grafana
+spec:
+  external:
+    url: http://monitoring-grafana.monitoring.svc.cluster.local
+    adminUser:
+      name: grafana-admin
+      key: admin-user
+    adminPassword:
+      name: grafana-admin
+      key: admin-password
+---
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaFolder
+metadata:
+  name: kubernetes-monitoring
+  namespace: monitoring
+spec:
+  title: Kubernetes Monitoring
+  instanceSelector:
+    matchLabels:
+      dashboards: monitoring-grafana
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: grafana
+  namespace: monitoring
+spec:
+  parentRefs:
+    - name: public
+      namespace: gateway-system
+      sectionName: https
+  hostnames:
+    - dash.cisien.dev
+  rules:
+    - backendRefs:
+        - name: monitoring-grafana
+          port: 80

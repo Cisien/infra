@@ -1,0 +1,64 @@
+# This is a Karpenter Provider for Proxmox Go template. It is embedded as the
+# user-data key in karpenter-talos-template by kustomize secretGenerator.
+version: v1alpha1
+debug: false
+persist: true
+machine:
+  type: worker
+  network:
+    # The provider renders .Network from the per-NodeClaim Proxmox IPAM result.
+    # Each elastic worker therefore receives its own static address and route.
+    interfaces:
+      {{- range .Network.Interfaces }}
+      - interface: {{ .Name }}
+        addresses:
+          {{- range .Address4 }}
+          # address4 is a provider-reservation CIDR. Talos must use the real
+          # VLAN 2000 LAN prefix so the default gateway is on-link.
+          - {{ regexReplaceAll "/[0-9]+$" . "/24" }}
+          {{- end }}
+        routes:
+          {{- if .Gateway4 }}
+          - network: 0.0.0.0/0
+            gateway: {{ .Gateway4 }}
+          {{- end }}
+      {{- end }}
+    nameservers:
+      {{- range .Network.NameServers }}
+      - {{ . }}
+      {{- end }}
+  token: {{ .Values.machineToken }}
+  ca:
+    crt: {{ .Values.machineCA }}
+  kubelet:
+    image: ghcr.io/siderolabs/kubelet:{{ .Values.kubeletVersion }}
+    defaultRuntimeSeccompProfileEnabled: true
+    disableManifestsDirectory: true
+    extraConfig:
+      {{- .Kubernetes.KubeletConfiguration | toYamlPretty | nindent 6 }}
+  install:
+    disk: /dev/sda
+    image: ghcr.io/siderolabs/installer:{{ .Values.talosVersion }}
+    wipe: true
+  features:
+    rbac: true
+    stableHostname: true
+    apidCheckExtKeyUsage: true
+    diskQuotaSupport: true
+cluster:
+  id: {{ .Values.clusterID }}
+  secret: {{ .Values.clusterSecret }}
+  controlPlane:
+    endpoint: {{ .Values.clusterEndpoint }}
+  clusterName: {{ .Values.clusterName }}
+  network:
+    cni:
+      name: none
+    dnsDomain: cluster.local
+    podSubnets:
+      - 10.244.0.0/16
+    serviceSubnets:
+      - 10.96.0.0/12
+  token: {{ .Kubernetes.BootstrapToken }}
+  ca:
+    crt: {{ .Kubernetes.RootCA | b64enc | quote }}

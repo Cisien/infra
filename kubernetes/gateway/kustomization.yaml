@@ -1,0 +1,7 @@
+resources:
+  - namespace.yaml
+  - letsencrypt-production.stage.yaml
+  - gateway-certificate.yaml
+  - gateway-class-config.yaml
+  - gateway-class.yaml
+  - gateway.yaml

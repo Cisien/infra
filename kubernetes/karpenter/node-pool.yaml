@@ -1,0 +1,47 @@
+apiVersion: karpenter.sh/v1
+kind: NodePool
+metadata:
+  name: elastic-workers
+spec:
+  # Adjust these limits to less than the usable aggregate PVE capacity.
+  limits:
+    cpu: "32"
+    memory: 128Gi
+  disruption:
+    consolidationPolicy: WhenEmpty
+    consolidateAfter: 5m
+    budgets:
+      - nodes: "1"
+  template:
+    spec:
+      expireAfter: 720h
+      nodeClassRef:
+        group: karpenter.proxmox.sinextra.dev
+        kind: ProxmoxNodeClass
+        name: talos-workers
+      requirements:
+        - key: kubernetes.io/arch
+          operator: In
+          values: [amd64]
+        - key: kubernetes.io/os
+          operator: In
+          values: [linux]
+        - key: topology.kubernetes.io/zone
+          operator: In
+          values: [pve-02, pve-03]
+        # Permit only provider instance types with at least 2 vCPUs and 4 GiB.
+        - key: node.kubernetes.io/instance-type
+          operator: In
+          values:
+            - c1.2VCPU-4GB
+            - c1.4VCPU-8GB
+            - c1.8VCPU-16GB
+            - m1.2VCPU-16GB
+            - m1.4VCPU-32GB
+            - m1.8VCPU-64GB
+            - s1.2VCPU-8GB
+            - s1.4VCPU-16GB
+            - s1.8VCPU-32GB
+            - t1.2VCPU-6GB
+            - t1.4VCPU-12GB
+            - t1.8VCPU-24GB

@@ -1,0 +1,20 @@
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: nas-nfs
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "true"
+provisioner: nfs.csi.k8s.io
+parameters:
+  server: 192.168.1.250
+  share: /volume/a86e2708-3047-42c6-8f99-1d8cc5192c9d/.srv/.unifi-drive/kubernetes/.data
+reclaimPolicy: Retain
+allowVolumeExpansion: true
+volumeBindingMode: Immediate
+mountOptions:
+  # This NAS exposes the full export path through NFSv3. Talos does not run
+  # rpc.statd, so NFSv3 must use local locking. Use TCP to avoid UDP RPC loss
+  # between the worker VLAN and NAS.
+  - nfsvers=3
+  - nolock
+  - proto=tcp

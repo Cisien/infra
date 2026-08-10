@@ -1,0 +1,17 @@
+namespace: kube-system
+
+secretGenerator:
+  - name: karpenter-talos-template
+    files:
+      - user-data=worker-machine-config.tmpl
+
+generatorOptions:
+  disableNameSuffixHash: true
+
+resources:
+  - proxmox-config.secret.yaml
+  - talos-values.sealed.yaml
+  - proxmox-template.yaml
+  - proxmox-node-class.yaml
+  - base-node-pool.yaml
+  - node-pool.yaml

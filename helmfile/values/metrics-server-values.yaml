@@ -1,0 +1,12 @@
+# Talos kubelet serving certificates in this cluster do not contain node IP SANs.
+# Metrics Server reaches kubelets by InternalIP, so it must skip kubelet TLS
+# verification. Its authenticated Kubernetes API connection remains verified.
+replicas: 1
+args:
+  - --kubelet-insecure-tls
+metrics:
+  enabled: true
+serviceMonitor:
+  enabled: true
+  additionalLabels:
+    release: monitoring

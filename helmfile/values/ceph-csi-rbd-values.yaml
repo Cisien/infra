@@ -1,0 +1,18 @@
+# The cluster currently has one schedulable fixed worker. One CSI controller is
+# sufficient because sidecars use leader election; node plugins still run on
+# every eligible worker through the DaemonSet.
+provisioner:
+  replicaCount: 1
+
+# Ceph RBD is reachable from every worker. Advertise a standard per-node
+# topology key so WaitForFirstConsumer provisioning can bind a selected node.
+topology:
+  domainLabels:
+    - kubernetes.io/hostname
+
+csiConfig:
+  - clusterID: "a742b94b-90ed-48a9-9805-97faf827bfd2"
+    monitors:
+      - "172.16.0.11:3300"
+      - "172.16.0.12:3300"
+      - "172.16.0.14:3300"
