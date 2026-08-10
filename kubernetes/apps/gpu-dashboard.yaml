@@ -1,0 +1,120 @@
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaFolder
+metadata:
+  name: gpu-monitoring
+  namespace: monitoring
+spec:
+  instanceSelector:
+    matchLabels:
+      dashboards: monitoring-grafana
+  title: GPU Monitoring
+---
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaDashboard
+metadata:
+  name: gpu-workers
+  namespace: monitoring
+spec:
+  folderRef: gpu-monitoring
+  instanceSelector:
+    matchLabels:
+      dashboards: monitoring-grafana
+  json: |
+    {
+      "annotations": {"list": []},
+      "description": "Metrics for the dedicated NVIDIA and AMD Talos GPU workers.",
+      "editable": true,
+      "graphTooltip": 1,
+      "links": [],
+      "panels": [
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"unit": "short", "thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": null}, {"color": "green", "value": 1}]}}, "overrides": []},
+          "gridPos": {"h": 4, "w": 12, "x": 0, "y": 0},
+          "id": 1,
+          "options": {"colorMode": "value", "graphMode": "none", "justifyMode": "center", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto"},
+          "targets": [{"expr": "up{namespace=\"nvidia-gpu-operator\", service=\"nvidia-dcgm-exporter\"}", "refId": "A"}],
+          "title": "NVIDIA DCGM exporter target",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"unit": "short", "thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": null}, {"color": "green", "value": 1}]}}, "overrides": []},
+          "gridPos": {"h": 4, "w": 12, "x": 12, "y": 0},
+          "id": 2,
+          "options": {"colorMode": "value", "graphMode": "none", "justifyMode": "center", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto"},
+          "targets": [{"expr": "up{namespace=\"amd-gpu-operator\", service=\"default-metrics-exporter\"}", "refId": "A"}],
+          "title": "AMD metrics exporter target",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"unit": "percent", "custom": {"drawStyle": "line", "fillOpacity": 10, "lineWidth": 2, "showPoints": "never", "spanNulls": true}}, "overrides": []},
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4},
+          "id": 3,
+          "options": {"legend": {"calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
+          "targets": [{"expr": "DCGM_FI_DEV_GPU_UTIL{Hostname=\"ai-nvidia-01\"}", "legendFormat": "GPU {{gpu}}", "refId": "A"}],
+          "title": "NVIDIA GPU utilization",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"unit": "decmbytes", "custom": {"drawStyle": "line", "fillOpacity": 10, "lineWidth": 2, "showPoints": "never", "spanNulls": true}}, "overrides": []},
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4},
+          "id": 4,
+          "options": {"legend": {"calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
+          "targets": [{"expr": "DCGM_FI_DEV_FB_USED{Hostname=\"ai-nvidia-01\"}", "legendFormat": "GPU {{gpu}} used", "refId": "A"}],
+          "title": "NVIDIA framebuffer used",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"unit": "celsius", "custom": {"drawStyle": "line", "fillOpacity": 10, "lineWidth": 2, "showPoints": "never", "spanNulls": true}}, "overrides": [{"matcher": {"id": "byName", "options": "Power"}, "properties": [{"id": "unit", "value": "watt"}]}]},
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 12},
+          "id": 5,
+          "options": {"legend": {"calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
+          "targets": [{"expr": "DCGM_FI_DEV_GPU_TEMP{Hostname=\"ai-nvidia-01\"}", "legendFormat": "Temperature", "refId": "A"}, {"expr": "DCGM_FI_DEV_POWER_USAGE{Hostname=\"ai-nvidia-01\"}", "legendFormat": "Power", "refId": "B"}],
+          "title": "NVIDIA temperature and power",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"unit": "percent", "custom": {"drawStyle": "line", "fillOpacity": 10, "lineWidth": 2, "showPoints": "never", "spanNulls": true}}, "overrides": []},
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 12},
+          "id": 6,
+          "options": {"legend": {"calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
+          "targets": [{"expr": "max by (hostname, gpu_id) (gpu_gfx_activity{hostname=\"ai-amd-01\"})", "legendFormat": "GPU {{gpu_id}}", "refId": "A"}],
+          "title": "AMD graphics activity",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"unit": "watt", "custom": {"drawStyle": "line", "fillOpacity": 10, "lineWidth": 2, "showPoints": "never", "spanNulls": true}}, "overrides": []},
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 20},
+          "id": 7,
+          "options": {"legend": {"calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
+          "targets": [{"expr": "max by (hostname, gpu_id) (gpu_average_package_power{hostname=\"ai-amd-01\"})", "legendFormat": "GPU {{gpu_id}}", "refId": "A"}],
+          "title": "AMD package power",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"unit": "hertz", "custom": {"drawStyle": "line", "fillOpacity": 10, "lineWidth": 2, "showPoints": "never", "spanNulls": true}}, "overrides": []},
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 20},
+          "id": 8,
+          "options": {"legend": {"calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
+          "targets": [{"expr": "max by (hostname, gpu_id) (gpu_clock{hostname=\"ai-amd-01\", clock_type=\"fabric\"}) * 1000000", "legendFormat": "GPU {{gpu_id}}", "refId": "A"}],
+          "title": "AMD fabric clock",
+          "type": "timeseries"
+        }
+      ],
+      "refresh": "30s",
+      "schemaVersion": 39,
+      "tags": ["gpu", "nvidia", "amd", "talos"],
+      "templating": {"list": []},
+      "time": {"from": "now-1h", "to": "now"},
+      "timezone": "browser",
+      "title": "GPU Workers",
+      "uid": "gpu-workers",
+      "version": 1
+    }

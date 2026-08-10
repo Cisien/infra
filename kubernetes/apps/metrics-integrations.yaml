@@ -189,3 +189,23 @@ spec:
       path: /metrics
       interval: 60s
       scrapeTimeout: 30s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: amd-gpu-metrics
+  namespace: monitoring
+  labels:
+    release: monitoring
+spec:
+  namespaceSelector:
+    matchNames:
+      - amd-gpu-operator
+  selector:
+    matchLabels:
+      app.kubernetes.io/service: default-metrics-exporter
+  endpoints:
+    - port: exporter-port
+      path: /metrics
+      interval: 15s
+      scrapeTimeout: 10s
