@@ -1,0 +1,121 @@
+apiVersion: amd.com/v1alpha1
+kind: DeviceConfig
+metadata:
+  name: default
+  namespace: amd-gpu-operator
+spec:
+  selector:
+    ai.cisien.com/vendor: amd
+  driver:
+    enable: false
+    blacklist: false
+    image: docker.io/myUserName/driverImage
+    imageRegistryTLS:
+      insecure: false
+      insecureSkipTLSVerify: false
+    version: 30.20.1
+    imageBuild:
+      gpgKeyURL: ''
+      packageRepoURL: ''
+    upgradePolicy:
+      enable: false
+      maxParallelUpgrades: 3
+      maxUnavailableNodes: 25%
+      nodeDrainPolicy:
+        force: true
+        gracePeriodSeconds: -1
+        timeoutSeconds: 300
+      podDeletionPolicy:
+        force: true
+        gracePeriodSeconds: -1
+        timeoutSeconds: 300
+      rebootRequired: true
+  commonConfig:
+    initContainerImage: busybox:1.36
+    utilsContainer:
+      image: docker.io/rocm/gpu-operator-utils:latest
+      imagePullPolicy: IfNotPresent
+  devicePlugin:
+    enableDevicePlugin: true
+    devicePluginImage: rocm/k8s-device-plugin:latest
+    devicePluginImagePullPolicy: IfNotPresent
+    devicePluginTolerations:
+    - effect: NoSchedule
+      key: ai.cisien.com/gpu
+      operator: Equal
+      value: 'true'
+    enableNodeLabeller: true
+    nodeLabellerImage: rocm/k8s-device-plugin:labeller-latest
+    nodeLabellerImagePullPolicy: IfNotPresent
+    nodeLabellerTolerations:
+    - effect: NoSchedule
+      key: ai.cisien.com/gpu
+      operator: Equal
+      value: 'true'
+    upgradePolicy:
+      maxUnavailable: 1
+      upgradeStrategy: RollingUpdate
+    kubeletSocketPath: /var/lib/kubelet/device-plugins
+    hostNetwork: false
+  metricsExporter:
+    enable: true
+    serviceType: ClusterIP
+    port: 5000
+    nodePort: 32500
+    image: docker.io/rocm/device-metrics-exporter:v1.5.1
+    imagePullPolicy: IfNotPresent
+    tolerations:
+    - effect: NoSchedule
+      key: ai.cisien.com/gpu
+      operator: Equal
+      value: 'true'
+    upgradePolicy:
+      maxUnavailable: 1
+      upgradeStrategy: RollingUpdate
+    hostNetwork: false
+    rbacConfig:
+      enable: false
+      image: quay.io/brancz/kube-rbac-proxy:v0.18.1
+      disableHttps: false
+      staticAuthorization:
+        clientName: ''
+        enable: false
+    prometheus:
+      serviceMonitor:
+        enable: true
+        interval: 30s
+        honorLabels: true
+        honorTimestamps: false
+        labels:
+          release: monitoring
+  testRunner:
+    enable: false
+    image: docker.io/rocm/test-runner:v1.5.1
+    imagePullPolicy: IfNotPresent
+    logsLocation:
+      hostPath: /var/log/amd-test-runner
+      logsExportSecrets: []
+      mountPath: /var/log/amd-test-runner
+    upgradePolicy:
+      maxUnavailable: 1
+      upgradeStrategy: RollingUpdate
+  draDriver:
+    enable: false
+    image: docker.io/rocm/k8s-gpu-dra-driver:latest
+    imagePullPolicy: IfNotPresent
+    upgradePolicy:
+      maxUnavailable: 1
+      upgradeStrategy: RollingUpdate
+  configManager:
+    enable: false
+    image: docker.io/rocm/device-config-manager:v1.5.1
+    imagePullPolicy: IfNotPresent
+    upgradePolicy:
+      maxUnavailable: 1
+      upgradeStrategy: RollingUpdate
+  remediationWorkflow:
+    enable: false
+    ttlForFailedWorkflows: 24h
+    testerImage: docker.io/rocm/test-runner:v1.5.1
+    autoStartWorkflow: true
+    rebootTimeout: 15m

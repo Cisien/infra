@@ -18,3 +18,5 @@ resources:
   - external-services.yaml
   - ai-local-storage.yaml
   - ai-amd-node-metadata.yaml
+  - amd-gpu-device-config.yaml
+  - llama-gpu-smoke.yaml

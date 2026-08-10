@@ -11,13 +11,19 @@ remediation:
   enabled: false
   installCRDs: false
 
+# The default chart DeviceConfig has a mandatory NFD selector that is not valid
+# for the Strix Halo iGPU. The explicit manifest in kubernetes/apps owns it.
+crds:
+  defaultCR:
+    install: false
+    upgrade: false
+
 installdefaultNFDRule: false
 
 deviceConfig:
   spec:
     selector:
       ai.cisien.com/vendor: amd
-      feature.node.kubernetes.io/amd-gpu: null
     driver:
       enable: false
     devicePlugin:
