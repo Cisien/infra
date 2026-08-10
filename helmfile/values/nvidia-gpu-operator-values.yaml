@@ -1,0 +1,44 @@
+# Talos supplies the NVIDIA driver and container toolkit through the Image
+# Factory schematic. The operator manages only the Kubernetes GPU operands.
+driver:
+  enabled: false
+
+toolkit:
+  enabled: false
+
+# The AMD operator chart owns Node Feature Discovery for AMD discovery. Do not
+# install a second NFD instance from the NVIDIA chart.
+nfd:
+  enabled: false
+
+operator:
+  # The controller must use the default container runtime. Only GPU workloads
+  # use the NVIDIA runtime on the NVIDIA worker.
+  runtimeClass: ""
+
+daemonsets:
+  tolerations:
+    - key: ai.cisien.com/gpu
+      operator: Equal
+      value: "true"
+      effect: NoSchedule
+
+# These workload modes are not used on the two dedicated RTX 3090 GPUs.
+migManager:
+  enabled: false
+vfioManager:
+  enabled: false
+vgpuDeviceManager:
+  enabled: false
+ccManager:
+  enabled: false
+sandboxDevicePlugin:
+  enabled: false
+kataSandboxDevicePlugin:
+  enabled: false
+
+dcgmExporter:
+  serviceMonitor:
+    enabled: true
+    additionalLabels:
+      release: monitoring
