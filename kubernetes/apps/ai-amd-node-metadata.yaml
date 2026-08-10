@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Node
+metadata:
+  name: ai-amd-01
+  labels:
+    ai.cisien.com/node: ai-amd-01
+    ai.cisien.com/role: gpu
+    ai.cisien.com/vendor: amd
+    node.kubernetes.io/worker: ""
+spec:
+  taints:
+    - key: ai.cisien.com/gpu
+      value: "true"
+      effect: NoSchedule

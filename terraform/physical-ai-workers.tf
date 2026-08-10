@@ -1,30 +1,24 @@
 variable "physical_ai_workers" {
   description = "Dedicated bare-metal Talos GPU workers. The management network is VLAN 2000 and the system NVMe also stores the Talos user volume."
   type = map(object({
-    ipv4_address          = string
-    mac_address           = string
-    gpu_vendor            = string
-    install_disk          = string
-    local_volume_min_size = string
-    local_volume_max_size = string
+    ipv4_address = string
+    mac_address  = string
+    gpu_vendor   = string
+    install_disk = string
   }))
 
   default = {
     ai-nvidia-01 = {
-      ipv4_address          = "172.16.200.105"
-      mac_address           = "3c:7c:3f:21:8d:37"
-      gpu_vendor            = "nvidia"
-      install_disk          = "/dev/nvme0n1"
-      local_volume_min_size = "1400GB"
-      local_volume_max_size = "1600GB"
+      ipv4_address = "172.16.200.105"
+      mac_address  = "3c:7c:3f:21:8d:37"
+      gpu_vendor   = "nvidia"
+      install_disk = "/dev/nvme0n1"
     }
     ai-amd-01 = {
-      ipv4_address          = "172.16.200.106"
-      mac_address           = "38:05:25:36:87:02"
-      gpu_vendor            = "amd"
-      install_disk          = "/dev/nvme0n1"
-      local_volume_min_size = "1400GB"
-      local_volume_max_size = "1600GB"
+      ipv4_address = "172.16.200.106"
+      mac_address  = "38:05:25:36:87:02"
+      gpu_vendor   = "amd"
+      install_disk = "/dev/nvme0n1"
     }
   }
 
@@ -124,8 +118,10 @@ data "talos_machine_configuration" "physical_ai_worker" {
             "ai.cisien.com/node"        = each.key
             "node.kubernetes.io/worker" = ""
           }
-          nodeTaints = {
-            (local.physical_ai_taint) = "true:NoSchedule"
+          kubelet = {
+            extraArgs = {
+              "register-with-taints" = "${local.physical_ai_taint}=true:NoSchedule"
+            }
           }
         }
         cluster = {
@@ -153,13 +149,7 @@ data "talos_machine_configuration" "physical_ai_worker" {
         apiVersion = "v1alpha1"
         kind       = "UserVolumeConfig"
         name       = "ai-data"
-        provisioning = {
-          diskSelector = {
-            match = "disk.transport == 'nvme'"
-          }
-          minSize = each.value.local_volume_min_size
-          maxSize = each.value.local_volume_max_size
-        }
+        volumeType = "directory"
       }),
     ],
     each.value.gpu_vendor == "nvidia" ? [yamlencode({

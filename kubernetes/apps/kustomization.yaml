@@ -17,3 +17,4 @@ resources:
   - metrics-dashboards.yaml
   - external-services.yaml
   - ai-local-storage.yaml
+  - ai-amd-node-metadata.yaml
