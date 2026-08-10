@@ -68,11 +68,21 @@ resource "talos_image_factory_schematic" "physical_ai_worker" {
   for_each = var.physical_ai_workers
 
   schematic = yamlencode({
-    customization = {
-      systemExtensions = {
-        officialExtensions = local.physical_ai_extensions[each.value.gpu_vendor]
-      }
-    }
+    customization = merge(
+      {
+        systemExtensions = {
+          officialExtensions = local.physical_ai_extensions[each.value.gpu_vendor]
+        }
+      },
+      each.value.gpu_vendor == "amd" ? {
+        extraKernelArgs = [
+          "amdgpu.gttsize=131072",
+          "ttm.pages_limit=33554432",
+          "amd_iommu=on",
+          "iommu=pt",
+        ]
+      } : {},
+    )
   })
 }
 
