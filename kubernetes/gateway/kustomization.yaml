@@ -1,7 +1,12 @@
 resources:
   - namespace.yaml
+  - self-signed-issuer.yaml
   - letsencrypt-production.stage.yaml
+  - letsencrypt-he-issuer.yaml
   - gateway-certificate.yaml
+  - secrets/he-credentials.sealed.yaml
+  - internal-gateway-certificate.yaml
   - gateway-class-config.yaml
   - gateway-class.yaml
   - gateway.yaml
+  - internal-gateway.yaml

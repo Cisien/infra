@@ -3,10 +3,13 @@ kind: CiliumL2AnnouncementPolicy
 metadata:
   name: lan-loadbalancers
 spec:
-  # VLAN 2000 elastic workers must not announce the LAN Gateway IP.
+  # VLAN 2000 workers and dedicated AI workers must not announce the
+  # 172.16.0.0/24 LAN Gateway IP.
   nodeSelector:
     matchExpressions:
       - key: karpenter.sh/nodepool
+        operator: DoesNotExist
+      - key: ai.cisien.com/role
         operator: DoesNotExist
   externalIPs: true
   loadBalancerIPs: true

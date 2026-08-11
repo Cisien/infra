@@ -1,0 +1,23 @@
+ARG PYTORCH_IMAGE=docker.io/rocm/pytorch:latest
+FROM ${PYTORCH_IMAGE}
+
+ENV PIP_NO_CACHE_DIR=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    CC=/usr/bin/gcc \
+    CXX=/usr/bin/g++
+
+WORKDIR /app
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements-rocm.txt /tmp/diffuser-requirements.txt
+RUN python -m pip install --upgrade pip \
+    && python -m pip install -r /tmp/diffuser-requirements.txt
+
+COPY app/ /app/
+
+EXPOSE 8189
+CMD ["python", "app.py"]

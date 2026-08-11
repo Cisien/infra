@@ -21,6 +21,15 @@ metadata:
 apiVersion: v1
 kind: Namespace
 metadata:
+  name: ai
+  labels:
+    pod-security.kubernetes.io/enforce: baseline
+    pod-security.kubernetes.io/audit: baseline
+    pod-security.kubernetes.io/warn: baseline
+---
+apiVersion: v1
+kind: Namespace
+metadata:
   name: ceph-csi-rbd
   labels:
     # The RBD CSI node plugin needs host mounts and privileged access to attach

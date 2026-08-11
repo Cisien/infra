@@ -12,9 +12,12 @@ reclaimPolicy: Retain
 allowVolumeExpansion: true
 volumeBindingMode: Immediate
 mountOptions:
-  # This NAS exposes the full export path through NFSv3. Talos does not run
-  # rpc.statd, so NFSv3 must use local locking. Use TCP to avoid UDP RPC loss
-  # between the worker VLAN and NAS.
+  # The NAS NFSv3 service is fixed on TCP/2049, but its rpcbind lookup is not
+  # reachable from worker VLANs. Use the current TCP mountd port directly.
+  # The port was verified from a worker with `rpcinfo -p 192.168.1.250`.
   - nfsvers=3
   - nolock
   - proto=tcp
+  - port=2049
+  - mountproto=tcp
+  - mountport=50491

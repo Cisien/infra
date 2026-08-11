@@ -111,6 +111,24 @@ releases:
       - config:
           gatewayAPI:
             enabled: true
+      - dns01RecursiveNameservers: "1.1.1.1:53,8.8.8.8:53"
+      - dns01RecursiveNameserversOnly: true
+
+  - name: cert-manager-webhook-he
+    namespace: cert-manager
+    chart: oci://codeberg.org/waldner/charts/cert-manager-webhook-he
+    version: 0.0.8
+    needs:
+      - cert-manager/cert-manager
+    values:
+      - groupName: acme.cisien.com
+        auth:
+          useSecrets: true
+        rbac:
+          secretNamespaces:
+            - cert-manager
+          secretNames:
+            - he-credentials
 
   - name: sealed-secrets
     namespace: kube-system

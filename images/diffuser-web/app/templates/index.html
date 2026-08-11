@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>FLUX Web UI</title>
+    <link rel="stylesheet" href="static/css/app.css">
+</head>
+<body>
+    <main class="page">
+        <section class="panel controls">
+            <header>
+                <h1>FLUX Web UI</h1>
+                <p>
+                    {{ defaults.model }}
+                    {% if defaults.lora %} with {{ defaults.lora }}{% endif %}
+                </p>
+            </header>
+
+            <form id="generateForm">
+                <label for="mode">Mode</label>
+                <select id="mode" name="mode">
+                    <option value="text" selected>Text to image</option>
+                    <option value="image">Image reference</option>
+                </select>
+
+                <label for="prompt">Prompt</label>
+                <textarea id="prompt" name="prompt" rows="7" required placeholder="Describe the image to generate"></textarea>
+
+                <label id="imageInputGroup" class="input-image" hidden>
+                    Input image
+                    <input id="image" name="image" type="file" accept="image/*">
+                </label>
+
+                <div class="grid">
+                    <label>
+                        Width
+                        <input id="width" name="width" type="number" min="128" max="{{ defaults.max_dimension }}" step="{{ defaults.dimension_step }}" value="{{ defaults.width }}">
+                    </label>
+                    <label>
+                        Height
+                        <input id="height" name="height" type="number" min="128" max="{{ defaults.max_dimension }}" step="{{ defaults.dimension_step }}" value="{{ defaults.height }}">
+                    </label>
+                </div>
+
+                <div class="grid">
+                    <label>
+                        Steps
+                        <input id="num_inference_steps" name="num_inference_steps" type="number" min="1" max="{{ defaults.max_steps }}" value="{{ defaults.steps }}">
+                    </label>
+                    <label>
+                        Guidance
+                        <input id="guidance_scale" name="guidance_scale" type="number" min="0" max="20" step="0.1" value="{{ defaults.guidance }}">
+                    </label>
+                </div>
+
+                <label>
+                    Max Sequence Length
+                    <input id="max_sequence_length" name="max_sequence_length" type="number" min="64" max="512" step="8" value="{{ defaults.max_sequence_length }}">
+                </label>
+
+                <label>
+                    Seed
+                    <input id="seed" name="seed" type="number" min="0" max="4294967295" placeholder="Random">
+                </label>
+
+                <div class="actions">
+                    <button id="loadButton" type="button">Load Model</button>
+                    <button id="generateButton" type="submit">Generate</button>
+                </div>
+            </form>
+
+            <p id="status" class="status">Ready on HTTP port {{ defaults.port }}.</p>
+            <div id="progress" class="progress" hidden>
+                <div id="progressBar" class="progress-bar" style="width: 0%"></div>
+            </div>
+        </section>
+
+        <section class="panel output">
+            <div id="result" class="result empty">
+                Generated image output appears here.
+            </div>
+            <div id="metadata" class="metadata"></div>
+        </section>
+    </main>
+
+    <script src="static/js/app.js?v=2"></script>
+</body>
+</html>

@@ -1,0 +1,24 @@
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-he
+spec:
+  acme:
+    email: certs@cisien.com
+    server: https://acme-v02.api.letsencrypt.org/directory
+    privateKeySecretRef:
+      name: letsencrypt-he-account
+    solvers:
+      - selector:
+          dnsZones:
+            - local.cisien.com
+        dns01:
+          webhook:
+            groupName: acme.cisien.com
+            solverName: he
+            config:
+              heUrl: https://dns.he.net
+              method: login
+              credentialsSecretRef:
+                name: he-credentials
+                namespace: cert-manager

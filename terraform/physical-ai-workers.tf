@@ -39,7 +39,7 @@ variable "physical_ai_network" {
   default = {
     cidr        = "172.16.200.0/24"
     gateway     = "172.16.200.1"
-    nameservers = ["172.16.200.1"]
+    nameservers = ["192.168.1.2"]
   }
 }
 

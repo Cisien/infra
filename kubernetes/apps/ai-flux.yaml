@@ -1,0 +1,187 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: flux-outputs
+  namespace: ai
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: nas-nfs
+  resources:
+    requests:
+      storage: 50Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: flux-image
+  namespace: ai
+spec:
+  # The AMD node exposes one GPU. Keep this disabled while robot or
+  # robot-laguna owns it; use a declarative replica change to switch.
+  replicas: 0
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: flux-image
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: flux-image
+    spec:
+      nodeSelector:
+        ai.cisien.com/vendor: amd
+      tolerations:
+        - key: ai.cisien.com/gpu
+          operator: Equal
+          value: "true"
+          effect: NoSchedule
+      imagePullSecrets:
+        - name: oci-registry-pull
+      securityContext:
+        fsGroup: 1000
+        supplementalGroups:
+          - 39
+          - 105
+      containers:
+        - name: diffuser-web
+          image: registry.cisien.com/ai-runtime/diffuser-web-rocm:2026.08.10
+          ports:
+            - name: http
+              containerPort: 8189
+          env:
+            - name: HOME
+              value: /home/cisien
+            - name: XDG_CACHE_HOME
+              value: /home/cisien/.cache
+            - name: TORCH_HOME
+              value: /home/cisien/.cache/torch
+            - name: TRITON_CACHE_DIR
+              value: /home/cisien/.cache/triton
+            - name: MIOPEN_USER_DB_PATH
+              value: /home/cisien/.cache/miopen
+            - name: MIOPEN_CUSTOM_CACHE_DIR
+              value: /home/cisien/.cache/miopen
+            - name: HIP_VISIBLE_DEVICES
+              value: "0"
+            - name: ROCR_VISIBLE_DEVICES
+              value: "0"
+            - name: TORCH_ROCM_AOTRITON_ENABLE_EXPERIMENTAL
+              value: "1"
+            - name: PYTORCH_ALLOC_CONF
+              value: expandable_segments:True
+            - name: PYTORCH_HIP_ALLOC_CONF
+              value: expandable_segments:True
+            - name: HOST
+              value: 0.0.0.0
+            - name: PORT
+              value: "8189"
+            - name: HF_HOME
+              value: /cache/huggingface
+            - name: HF_HUB_CACHE
+              value: /cache/huggingface/hub
+            - name: FLUX_OUTPUT_DIR
+              value: /outputs
+            - name: HF_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: flux-huggingface
+                  key: token
+            - name: HUGGING_FACE_HUB_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: flux-huggingface
+                  key: token
+            - name: MODEL_ID
+              value: black-forest-labs/FLUX.2-klein-9B
+            - name: FLUX_PIPELINE
+              value: flux2-klein
+            - name: FLUX_OPENAI_MODEL_ID
+              value: flux-image
+            - name: FLUX_OPENAI_MAX_IMAGES
+              value: "1"
+            - name: FLUX_TEXT_ENCODER_ID
+              value: ponpoke/flux2-klein-9b-uncensored-text-encoder:Q4_K_M
+            - name: FLUX_TEXT_ENCODER_GGUF_FILE
+              value: flux2-klein-9b-uncensored-q4_k_m.gguf
+            - name: FLUX_TEXT_ENCODER_TOKENIZER_ID
+              value: black-forest-labs/FLUX.2-klein-9B
+            - name: FLUX_TEXT_ENCODER_TOKENIZER_SUBFOLDER
+              value: tokenizer
+            - name: FLUX_DEFAULT_STEPS
+              value: "4"
+            - name: FLUX_DEFAULT_GUIDANCE
+              value: "1"
+            - name: FLUX_MAX_DIMENSION
+              value: "8192"
+            - name: FLUX_QUANTIZATION
+              value: none
+            - name: FLUX_TORCH_DTYPE
+              value: float16
+            - name: FLUX_VAE_TILING
+              value: "0"
+            - name: FLUX_VAE_SLICING
+              value: "0"
+            - name: FLUX_CPU_OFFLOAD
+              value: "0"
+            - name: FLUX_ENABLE_XFORMERS
+              value: "0"
+            - name: FLUX_TEXT_ENCODER_DEVICE
+              value: cuda:0
+            - name: FLUX_IMAGE_MODEL_DEVICE
+              value: cuda:0
+          resources:
+            requests:
+              cpu: "16"
+              memory: 64Gi
+              amd.com/gpu: 1
+            limits:
+              cpu: "16"
+              memory: 64Gi
+              amd.com/gpu: 1
+          startupProbe:
+            httpGet:
+              path: /health
+              port: http
+            failureThreshold: 180
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 20
+          volumeMounts:
+            - name: home
+              mountPath: /home/cisien
+            - name: cache
+              mountPath: /cache
+            - name: outputs
+              mountPath: /outputs
+      volumes:
+        - name: home
+          emptyDir: {}
+        - name: cache
+          persistentVolumeClaim:
+            claimName: amd-model-cache
+        - name: outputs
+          persistentVolumeClaim:
+            claimName: flux-outputs
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: flux-image
+  namespace: ai
+spec:
+  selector:
+    app.kubernetes.io/name: flux-image
+  ports:
+    - name: http
+      port: 8189
+      targetPort: http

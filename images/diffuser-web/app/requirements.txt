@@ -1,0 +1,22 @@
+Flask>=3.0.0
+Pillow>=10.0.0
+
+# Install the CUDA build of torch that matches your system first if pip does
+# not choose the right wheel automatically.
+torch>=2.3.0
+torchvision>=0.18.0
+
+diffusers>=0.38.0
+transformers>=4.56.1
+accelerate>=0.33.0
+peft>=0.12.0
+safetensors>=0.4.3
+huggingface_hub>=0.24.0
+gguf>=0.10.0
+sentencepiece>=0.2.0
+protobuf>=5.0.0
+bitsandbytes>=0.49.0
+
+# CUDA memory/performance helper. Install with uv's torch backend, for example:
+# uv pip install --python .venv --torch-backend cu128 -r requirements.txt
+xformers>=0.0.27

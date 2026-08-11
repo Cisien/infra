@@ -1,0 +1,10 @@
+# LAN-only address for the internal Gateway.
+# The public Gateway remains on 172.16.0.240 and is the only address forwarded by WAN NAT.
+apiVersion: cilium.io/v2
+kind: CiliumLoadBalancerIPPool
+metadata:
+  name: internal-gateway
+spec:
+  blocks:
+    - start: 172.16.0.239
+      stop: 172.16.0.239

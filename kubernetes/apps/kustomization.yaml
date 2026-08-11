@@ -6,6 +6,11 @@ resources:
   - secrets/ceph-csi-rbd.sealed.yaml
   - secrets/grafana-admin.sealed.yaml
   - secrets/snmp-exporter-config.sealed.yaml
+  - secrets/oci-registry-auth.sealed.yaml
+  - secrets/oci-registry-client.sealed.yaml
+  - secrets/oci-registry-pull.sealed.yaml
+  - secrets/litellm-auth.sealed.yaml
+  - secrets/flux-huggingface.sealed.yaml
   - ceph-rbd.yaml
   - searx.yaml
   - wavelog.yaml
@@ -17,6 +22,11 @@ resources:
   - metrics-dashboards.yaml
   - external-services.yaml
   - ai-local-storage.yaml
+  - ai-registry.yaml
+  - ai-inference.yaml
+  - ai-internal-routes.yaml
+  - ai-flux.yaml
+  - laguna-chat-template.yaml
   - ai-amd-node-metadata.yaml
   - amd-gpu-device-config.yaml
   - gpu-dashboard.yaml

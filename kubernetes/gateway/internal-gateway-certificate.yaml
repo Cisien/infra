@@ -1,0 +1,12 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: internal-gateway-tls
+  namespace: gateway-system
+spec:
+  secretName: internal-gateway-tls
+  issuerRef:
+    name: letsencrypt-he
+    kind: ClusterIssuer
+  dnsNames:
+    - "*.local.cisien.com"

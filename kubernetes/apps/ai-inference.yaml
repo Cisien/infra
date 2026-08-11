@@ -1,0 +1,617 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: nvidia-model-cache
+  namespace: ai
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: ai-local
+  volumeName: ai-nvidia-01-data
+  resources:
+    requests:
+      storage: 1200Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: amd-model-cache
+  namespace: ai
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: ai-local
+  volumeName: ai-amd-01-data
+  resources:
+    requests:
+      storage: 1200Gi
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: litellm-config
+  namespace: ai
+data:
+  config.yaml: |
+    model_list:
+      - model_name: incompetent-robot
+        litellm_params:
+          model: openai/incompetent-robot
+          api_base: http://nvidia-qwopus.ai.svc.cluster.local:8080/v1
+          api_key: none
+      - model_name: robot
+        litellm_params:
+          model: openai/robot
+          api_base: http://amd-qwen.ai.svc.cluster.local:8080/v1
+          api_key: none
+      - model_name: robot-laguna
+        litellm_params:
+          model: openai/robot-laguna
+          api_base: http://amd-laguna.ai.svc.cluster.local:8080/v1
+          api_key: none
+    litellm_settings:
+      drop_params: false
+    general_settings:
+      master_key: os.environ/LITELLM_MASTER_KEY
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: litellm
+  namespace: ai
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: litellm
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: litellm
+    spec:
+      containers:
+        - name: litellm
+          image: ghcr.io/berriai/litellm:v1.96.0
+          args:
+            - --config
+            - /etc/litellm/config.yaml
+            - --port
+            - "4000"
+          ports:
+            - name: http
+              containerPort: 4000
+          env:
+            - name: LITELLM_MASTER_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: litellm-auth
+                  key: master-key
+          startupProbe:
+            httpGet:
+              path: /health/liveliness
+              port: http
+            failureThreshold: 30
+            periodSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /health/readiness
+              port: http
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health/liveliness
+              port: http
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 100m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 2Gi
+          volumeMounts:
+            - name: config
+              mountPath: /etc/litellm
+              readOnly: true
+      volumes:
+        - name: config
+          configMap:
+            name: litellm-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: litellm
+  namespace: ai
+spec:
+  selector:
+    app.kubernetes.io/name: litellm
+  ports:
+    - name: http
+      port: 4000
+      targetPort: http
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nvidia-qwopus
+  namespace: ai
+spec:
+  replicas: 0
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: nvidia-qwopus
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: nvidia-qwopus
+    spec:
+      nodeSelector:
+        ai.cisien.com/vendor: nvidia
+      tolerations:
+        - key: ai.cisien.com/gpu
+          operator: Equal
+          value: "true"
+          effect: NoSchedule
+      initContainers:
+        - name: model-cache
+          image: ghcr.io/oras-project/oras:v1.3.0
+          command: ["/bin/sh", "-ec"]
+          args:
+            - |
+              cache=/models/qwopus-q6
+              complete="$cache/.complete"
+              if test -f "$complete"; then exit 0; fi
+              tmp=$(mktemp -d /models/.qwopus-q6.XXXXXX)
+              trap 'rm -rf "$tmp"' EXIT
+              oras pull --username "$OCI_USERNAME" --password "$OCI_PASSWORD" --output "$tmp" registry.cisien.com/ai-models/qwopus-q6:2026-08-10
+              test -f "$tmp/Qwopus3.6-27B-v2-MTP-Q6_K.gguf"
+              rm -rf "$cache"
+              mv "$tmp" "$cache"
+              touch "$complete"
+          env:
+            - name: OCI_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: oci-registry-client
+                  key: username
+            - name: OCI_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: oci-registry-client
+                  key: password
+          volumeMounts:
+            - name: models
+              mountPath: /models
+      containers:
+        - name: llama-server
+          image: ghcr.io/ggml-org/llama.cpp:server-cuda
+          args:
+            - --host
+            - 0.0.0.0
+            - --parallel
+            - "1"
+            - --model
+            - /models/qwopus-q6/Qwopus3.6-27B-v2-MTP-Q6_K.gguf
+            - --jinja
+            - -c
+            - "262144"
+            - --fit
+            - "off"
+            - --no-mmap
+            - --temp
+            - "1"
+            - --min-p
+            - "0.01"
+            - --top-p
+            - "0.95"
+            - --top-k
+            - "65"
+            - --alias
+            - incompetent-robot
+            - --threads
+            - "18"
+            - --flash-attn
+            - "on"
+            - --cache-type-k
+            - q8_0
+            - --cache-type-v
+            - q8_0
+            - --metrics
+            - --cache-ram
+            - "32768"
+            - --spec-draft-n-max
+            - "3"
+          ports:
+            - name: http
+              containerPort: 8080
+          resources:
+            requests:
+              cpu: "18"
+              memory: 40Gi
+              nvidia.com/gpu: 2
+            limits:
+              cpu: "18"
+              memory: 40Gi
+              nvidia.com/gpu: 2
+          startupProbe:
+            httpGet:
+              path: /health
+              port: http
+            failureThreshold: 180
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 20
+          volumeMounts:
+            - name: models
+              mountPath: /models
+              readOnly: true
+      volumes:
+        - name: models
+          persistentVolumeClaim:
+            claimName: nvidia-model-cache
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nvidia-qwopus
+  namespace: ai
+spec:
+  selector:
+    app.kubernetes.io/name: nvidia-qwopus
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: amd-qwen
+  namespace: ai
+spec:
+  replicas: 0
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: amd-qwen
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: amd-qwen
+    spec:
+      nodeSelector:
+        ai.cisien.com/vendor: amd
+      tolerations:
+        - key: ai.cisien.com/gpu
+          operator: Equal
+          value: "true"
+          effect: NoSchedule
+      initContainers:
+        - name: model-cache
+          image: ghcr.io/oras-project/oras:v1.3.0
+          command: ["/bin/sh", "-ec"]
+          args:
+            - |
+              cache=/models/qwen-q8
+              complete="$cache/.complete"
+              if test -f "$complete"; then exit 0; fi
+              tmp=$(mktemp -d /models/.qwen-q8.XXXXXX)
+              trap 'rm -rf "$tmp"' EXIT
+              oras pull --username "$OCI_USERNAME" --password "$OCI_PASSWORD" --output "$tmp" registry.cisien.com/ai-models/qwen-35b-a3b-q8:2026-08-10
+              test -f "$tmp/Qwen3.6-35B-A3B-UD-Q8_K_XL.gguf"
+              rm -rf "$cache"
+              mv "$tmp" "$cache"
+              touch "$complete"
+          env:
+            - name: OCI_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: oci-registry-client
+                  key: username
+            - name: OCI_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: oci-registry-client
+                  key: password
+          volumeMounts:
+            - name: models
+              mountPath: /models
+      containers:
+        - name: llama-server
+          image: ghcr.io/ggml-org/llama.cpp:server-rocm
+          args:
+            - --host
+            - 0.0.0.0
+            - --port
+            - "8080"
+            - --model
+            - /models/qwen-q8/Qwen3.6-35B-A3B-UD-Q8_K_XL.gguf
+            - --alias
+            - robot
+            - --prio
+            - "3"
+            - --temp
+            - "0.6"
+            - --top-p
+            - "0.95"
+            - --top-k
+            - "20"
+            - --min-p
+            - "0.0"
+            - --presence_penalty
+            - "0.5"
+            - --ctx-size
+            - "786432"
+            - --no-mmap
+            - -ngl
+            - "999"
+            - -fa
+            - "1"
+            - --threads
+            - "16"
+            - --parallel
+            - "3"
+            - --reasoning
+            - "off"
+            - --spec-type
+            - draft-mtp
+            - --spec-draft-n-max
+            - "3"
+          env:
+            - name: HIP_VISIBLE_DEVICES
+              value: "0"
+            - name: ROCR_VISIBLE_DEVICES
+              value: "0"
+          ports:
+            - name: http
+              containerPort: 8080
+          resources:
+            requests:
+              cpu: "16"
+              memory: 64Gi
+              amd.com/gpu: 1
+            limits:
+              cpu: "16"
+              memory: 64Gi
+              amd.com/gpu: 1
+          startupProbe:
+            httpGet:
+              path: /health
+              port: http
+            failureThreshold: 180
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 20
+          volumeMounts:
+            - name: models
+              mountPath: /models
+              readOnly: true
+      volumes:
+        - name: models
+          persistentVolumeClaim:
+            claimName: amd-model-cache
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: amd-qwen
+  namespace: ai
+spec:
+  selector:
+    app.kubernetes.io/name: amd-qwen
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: amd-laguna
+  namespace: ai
+spec:
+  replicas: 0
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: amd-laguna
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: amd-laguna
+    spec:
+      nodeSelector:
+        ai.cisien.com/vendor: amd
+      tolerations:
+        - key: ai.cisien.com/gpu
+          operator: Equal
+          value: "true"
+          effect: NoSchedule
+      imagePullSecrets:
+        - name: oci-registry-pull
+      initContainers:
+        - name: model-cache
+          image: ghcr.io/oras-project/oras:v1.3.0
+          command: ["/bin/sh", "-ec"]
+          args:
+            - |
+              cache=/models/laguna-fp4
+              complete="$cache/.complete"
+              if test -f "$complete"; then exit 0; fi
+              tmp=$(mktemp -d /models/.laguna-fp4.XXXXXX)
+              trap 'rm -rf "$tmp"' EXIT
+              oras pull --username "$OCI_USERNAME" --password "$OCI_PASSWORD" --output "$tmp" registry.cisien.com/ai-models/laguna-fp4:2026-08-10
+              test -f "$tmp/laguna-s-2.1-ROCmFP4-StrixKVSpine-v4.gguf"
+              rm -rf "$cache"
+              mv "$tmp" "$cache"
+              touch "$complete"
+          env:
+            - name: OCI_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: oci-registry-client
+                  key: username
+            - name: OCI_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: oci-registry-client
+                  key: password
+          volumeMounts:
+            - name: models
+              mountPath: /models
+      containers:
+        - name: llama-server
+          image: registry.cisien.com/ai-runtime/llama-rocmfpx-laguna:2026.08.10
+          args:
+            - --host
+            - 0.0.0.0
+            - --port
+            - "8080"
+            - --model
+            - /models/laguna-fp4/laguna-s-2.1-ROCmFP4-StrixKVSpine-v4.gguf
+            - --alias
+            - robot-laguna
+            - --jinja
+            - --chat-template-file
+            - /opt/llama/laguna-s-2.1-chat-template.jinja
+            - --ctx-size
+            - "524288"
+            - --parallel
+            - "2"
+            - --n-gpu-layers
+            - "999"
+            - --device
+            - Vulkan0
+            - --split-mode
+            - row
+            - --flash-attn
+            - "on"
+            - --cache-type-k
+            - f16
+            - --cache-type-v
+            - f16
+            - --batch-size
+            - "2048"
+            - --ubatch-size
+            - "512"
+            - --threads
+            - "16"
+            - --threads-batch
+            - "16"
+            - --temp
+            - "1.0"
+            - --top-p
+            - "1.0"
+            - --top-k
+            - "20"
+            - --min-p
+            - "0.0"
+            - --repeat-penalty
+            - "1.0"
+            - --seed
+            - "42"
+            - --chat-template-kwargs
+            - '{"enable_thinking":true,"preserve_thinking":true}'
+            - --reasoning
+            - "on"
+            - --reasoning-format
+            - deepseek
+            - --reasoning-budget
+            - "-1"
+            - --no-mmproj
+            - --spec-type
+            - none
+            - --metrics
+          env:
+            - name: GGML_VK_MAX_NODES_PER_SUBMIT
+              value: "10"
+            - name: GGML_VK_FA_MAX_WORKGROUPS_X_PER_DISPATCH
+              value: "4"
+          ports:
+            - name: http
+              containerPort: 8080
+          resources:
+            requests:
+              cpu: "16"
+              memory: 64Gi
+              amd.com/gpu: 1
+            limits:
+              cpu: "16"
+              memory: 64Gi
+              amd.com/gpu: 1
+          startupProbe:
+            httpGet:
+              path: /health
+              port: http
+            failureThreshold: 180
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 20
+          volumeMounts:
+            - name: models
+              mountPath: /models
+              readOnly: true
+            - name: chat-template
+              mountPath: /opt/llama/laguna-s-2.1-chat-template.jinja
+              subPath: laguna-s-2.1-chat-template.jinja
+              readOnly: true
+      volumes:
+        - name: models
+          persistentVolumeClaim:
+            claimName: amd-model-cache
+        - name: chat-template
+          configMap:
+            name: laguna-chat-template
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: amd-laguna
+  namespace: ai
+spec:
+  selector:
+    app.kubernetes.io/name: amd-laguna
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http

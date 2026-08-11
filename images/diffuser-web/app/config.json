@@ -1,0 +1,29 @@
+{
+  "model": {
+    "name": "kpsss34/FHDR_Uncensored",
+    "lora_name": "",
+    "lora_weight_name": "",
+    "lora_adapter_name": "v1",
+    "description": "FHDR Uncensored FluxPipeline",
+    "torch_dtype": "bfloat16"
+  },
+  "server": {
+    "host": "0.0.0.0",
+    "port": 8189,
+    "debug": false
+  },
+  "generation": {
+    "default_steps": 40,
+    "default_guidance_scale": 4.0,
+    "default_width": 1024,
+    "default_height": 1024,
+    "default_max_sequence_length": 512,
+    "max_steps": 80,
+    "max_guidance_scale": 20,
+    "supported_sizes": [512, 768, 1024, 1152, 1280, 1536]
+  },
+  "ui": {
+    "title": "FLUX Web UI",
+    "auto_resize_textareas": true
+  }
+}
