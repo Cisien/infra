@@ -1,29 +1,30 @@
-# Karpenter Proxmox configuration
+# Karpenter Provider for Proxmox
 
-The provider runs in a Kubernetes Pod. Configure its Proxmox API URL with a
-numeric address that Pods can resolve and reach. Use `share` for the Talos raw
-source image because `local-storage-pool` is ZFS-backed and cannot store image
-imports. The worker boot disks still use `local-storage-pool`.
+This directory declares elastic Talos workers for Karpenter Provider for Proxmox.
 
-This directory uses the provider's Talos worker template pattern.
+## Current design
 
-Required ignored Secret files:
+- `ProxmoxTemplate` uses an uncompressed Talos Image Factory raw image on `local` storage.
+- Worker boot disks use `local-storage-pool`.
+- The NodePool permits only the configured Proxmox zones and instance types.
+- Provider-local IPAM allocates worker addresses from the reserved worker CIDR in `proxmox-template.yaml`.
+- UniFi DHCP must not allocate from the provider-local IPAM range.
+- NFS exports must allow the worker range before a PVC-backed workload can run.
 
-- `proxmox-config.secret.yaml`: copy the example and add a dedicated least-privilege Karpenter Proxmox token.
-- `talos-values.secret.yaml`: generate it from the sensitive Terraform output after the fixed Talos cluster bootstrap.
+## Required local inputs
 
-Before applying this directory:
+Two plain Secret files are ignored and must be supplied locally:
 
-1. Set the uncompressed Talos Image Factory raw URL in `proxmox-template.yaml`.
-2. Confirm `local-storage-pool` accepts the Karpenter template image and VM disk contents on `pve-02` and `pve-03`, and that its template status lists only those zones.
-3. Set NodePool limits below actual usable PVE capacity.
-4. The template omits `address4`, so workers use DHCP. Keep `.230–.233` and
-   `.240` outside that DHCP scope.
-5. Confirm the NAS NFS export permits worker source addresses before workloads
-   use PVCs.
+- `proxmox-config.secret.yaml`: dedicated least-privilege Proxmox credentials for the provider.
+- `talos-values.secret.yaml`: sensitive Talos values generated after fixed-cluster bootstrap.
 
-Apply `proxmox-config.secret.yaml` directly before Helmfile. The Karpenter
-Kustomization applies both ignored Secrets again after Terraform generates
-`talos-values.secret.yaml`.
+Use the tracked `*.secret.example.yaml` files as schemas. Do not commit the generated files.
 
-The first workload node is created only after a Pod cannot schedule onto the bootstrap worker.
+## Apply order
+
+1. Apply the local Proxmox configuration Secret before the Karpenter Helm release.
+2. Install or update the Karpenter Provider for Proxmox release through Helmfile.
+3. Apply this Kustomization after the provider CRDs and Talos values Secret exist.
+4. Verify NodeClaim conditions and Kubernetes Node readiness before relying on elastic capacity.
+
+Do not treat a launched Proxmox VM as a usable worker. Confirm Talos registration, Cilium, storage access, and Kubernetes readiness.

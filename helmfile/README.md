@@ -1,54 +1,37 @@
 # Platform Helm releases
 
-This directory pins the Cilium, NFS CSI, Ceph RBD CSI, Metrics Server,
-Grafana Operator, kube-prometheus-stack, cert-manager, and Karpenter Provider
-for Proxmox charts.
+`helmfile.yaml` pins the cluster platform releases. It manages Cilium, NFS CSI, Ceph RBD CSI, Metrics Server, the monitoring stack, Grafana Operator, SNMP exporter, cert-manager, Sealed Secrets, Karpenter Provider for Proxmox, and both GPU operators.
 
-Before a future Helmfile apply, export the Kubernetes API endpoint host without a URL scheme or port:
+## Use
+
+Set `KUBERNETES_API_HOST` only when the Cilium values template requires the Kubernetes API host. Use a host name or address without a URL scheme or port.
 
 ```bash
-export KUBERNETES_API_HOST=172.16.0.230
+export KUBERNETES_API_HOST=REPLACE_WITH_API_HOST
+helmfile -f helmfile.yaml build
 ```
 
-The Cilium values enable Gateway API, L2 announcements, and kube-proxy
-replacement for Talos. After changing a Cilium ConfigMap setting, roll the
-Cilium agent and operator before validating it; Helm upgrades alone do not
-restart their existing Pods. cert-manager installs its CRDs and has Gateway API
-HTTP-01 support enabled for the production Let's Encrypt Gateway certificate.
+Run a reviewed, release-specific synchronization command. Do not run a full synchronization during unrelated work.
+
+## GPU operators
+
+Talos owns host GPU drivers and the NVIDIA container toolkit through Image Factory extensions. The GPU operators manage Kubernetes discovery, device plugins, metrics, and resource advertisement only.
+
+- The NVIDIA operator exposes `nvidia.com/gpu` on the NVIDIA worker.
+- The AMD operator exposes `amd.com/gpu` on the AMD worker.
+- The NFD worker DaemonSet is restricted to the NVIDIA worker. NFD master and garbage-collection components are central control components.
+- GPU-facing DaemonSets select their matching vendor worker and tolerate the dedicated GPU taint.
 
 ## Observability
 
-Metrics Server runs in `kube-system`. Talos kubelet serving certificates lack
-node IP SANs. Metrics Server therefore uses `--kubelet-insecure-tls` when it
-scrapes kubelets by InternalIP. Its connection to the Kubernetes API remains
-TLS-verified.
+The `monitoring` release provides Prometheus and Grafana. Prometheus uses Ceph RBD claims; it does not use NFS for its time-series database.
 
-`monitoring` is the `kube-prometheus-stack` release namespace. Prometheus has
-a single `25Gi` RWO `proxmox-ceph-rbd` claim, `15d` retention, and a `20GiB`
-retention size. Grafana uses a separate `5Gi` RWO `proxmox-ceph-rbd` claim.
-Neither service uses NFS storage. Helm-generated configuration uses ConfigMaps;
-the Grafana administrator credential is `grafana-admin`, created only from the
-encrypted `kubernetes/apps/secrets/grafana-admin.sealed.yaml` manifest.
-Grafana Operator runs in `grafana-operator` and watches the in-cluster
-`monitoring-grafana` Service as an external Grafana instance. It reconciles the
-chart-generated default dashboard ConfigMaps through `GrafanaDashboard` CRs and
-places them in the `Kubernetes Monitoring` `GrafanaFolder`. The Prometheus
-datasource remains provisioned by kube-prometheus-stack so Grafana starts with a
-working default datasource during upgrades.
+Grafana is managed through the Grafana Operator as an external representation of the chart-managed Grafana Service. The Prometheus data source remains chart-managed. GitOps-managed dashboards include cluster, storage, gateway, NAS, and GPU views.
 
-Grafana remains a ClusterIP Service inside the cluster. The separate
-`kubernetes/apps/grafana.yaml` HTTPRoute publishes it at
-`https://dash.cisien.dev` through the Cilium Gateway. The shared cert-manager
-`gateway-system/gateway-tls` certificate includes this hostname. Grafana still
-requires its administrator login.
+GPU metrics use the NVIDIA DCGM exporter and the AMD metrics exporter. The AMD exporter is discovered by the `amd-gpu-metrics` ServiceMonitor in `kubernetes/apps/metrics-integrations.yaml`. The `GPU Workers` dashboard is declared in `kubernetes/apps/gpu-dashboard.yaml`.
 
-Node Exporter requires host namespaces and host paths. It runs alone in the
-privileged `monitoring-node-exporter` namespace; Prometheus and Grafana remain
-outside that namespace. Talos controller manager and scheduler metrics bind to
-node loopback, so their remote ServiceMonitors are disabled instead of creating
-permanently down targets.
+## Prerequisites
 
-Do not run Helmfile until the fixed Talos cluster exists. Apply
-`kubernetes/karpenter/proxmox-config.secret.yaml` first because the Karpenter
-chart mounts it. The Talos values Secret is needed later, before the Karpenter
-Kustomization is applied. See the repository root README for the ordered rollout.
+Apply required local Secret manifests before the Helm releases that mount them. These files are ignored and must never be committed. Encrypted SealedSecret resources belong under `kubernetes/apps/secrets/` and are applied through the applications Kustomization.
+
+Node Exporter uses host paths and runs in the privileged `monitoring-node-exporter` namespace. Prometheus and Grafana do not require that privileged namespace.

@@ -1,69 +1,55 @@
 # Upgrade runbook
 
-This repository pins the Talos and Kubernetes bootstrap versions in `terraform/terraform.tfvars`. The released Terraform Talos provider used by this repository manages initial bootstrap. Use Talos itself for the safe upgrade operations below.
-
-Do not change versions and run an apply during a production upgrade without first following this runbook.
+Use this runbook for a reviewed Talos or Kubernetes upgrade. Upgrade one failure domain at a time and stop when a health check fails.
 
 ## Preconditions
 
-1. Review the Talos support matrix for the selected Talos and Kubernetes versions.
-2. Take an etcd backup.
-3. Confirm every workload has a suitable PodDisruptionBudget or can tolerate restart.
-4. Write Terraform outputs to local, ignored files:
-
-   ```bash
-   terraform -chdir=terraform output -raw talosconfig > ../talosconfig
-   terraform -chdir=terraform output -raw kubeconfig > ../kubeconfig
-   chmod 600 talosconfig kubeconfig
-   ```
-
-5. Use `talosctl health` and `kubectl get nodes` to confirm the cluster is healthy.
+1. Review the Talos and Kubernetes compatibility matrix.
+2. Take and verify an etcd backup.
+3. Confirm all Nodes are Ready and required workloads are healthy.
+4. Confirm the current `talosconfig` and `kubeconfig` are local, protected, and ignored by Git.
+5. Review PodDisruptionBudgets and storage dependencies.
+6. Render the affected OpenTofu, Helmfile, and Kustomize changes before applying them.
 
 ## Talos OS upgrade
 
-Upgrade one control-plane node at a time. Wait for `talosctl health` to succeed after each node. This preserves etcd quorum.
+Upgrade control-plane nodes sequentially. Wait for cluster health after each node so etcd quorum remains available.
 
 ```bash
 export TALOSCONFIG="$PWD/talosconfig"
-export TALOS_IMAGE="ghcr.io/siderolabs/installer:vREPLACE_WITH_TARGET_TALOS_VERSION"
-
-# Repeat one command at a time for cp-01, cp-02, cp-03, then bootstrap worker.
-talosctl upgrade --nodes REPLACE_WITH_NODE_IP --image "$TALOS_IMAGE"
-talosctl health --nodes REPLACE_WITH_CONTROL_PLANE_IP
+talosctl upgrade --nodes REPLACE_WITH_NODE --image REPLACE_WITH_INSTALLER_IMAGE
+talosctl health --nodes REPLACE_WITH_CONTROL_PLANE
 ```
 
-Talos uses an A/B image layout and can roll back if the new image fails to boot.
+Do not use one generic installer image for the physical GPU workers. Their Talos Image Factory schematics include vendor-specific extensions. The AMD schematic also includes required UMA and IOMMU kernel arguments.
+
+For each physical GPU worker:
+
+1. Build or select the matching vendor-specific Image Factory installer from the OpenTofu configuration.
+2. Upgrade one GPU worker at a time.
+3. Confirm the node is Ready, the vendor resource is still advertised, and the matching GPU operator Pods are healthy.
+4. Confirm Prometheus target health and the GPU dashboard metrics after the upgrade.
+
+For elastic workers, update the Karpenter Talos template only after the control plane is healthy. Karpenter replaces drifted workers according to its disruption policy.
 
 ## Kubernetes upgrade
 
-First compare the operation without changes:
+First inspect the operation:
 
 ```bash
 export TALOSCONFIG="$PWD/talosconfig"
 talosctl upgrade-k8s \
-  --nodes REPLACE_WITH_CONTROL_PLANE_IP \
+  --nodes REPLACE_WITH_CONTROL_PLANE \
   --to vREPLACE_WITH_TARGET_KUBERNETES_VERSION \
   --dry-run
 ```
 
-Then run the same operation without `--dry-run`:
+Then run the reviewed operation without `--dry-run`. When Cilium runs with kube-proxy disabled, inspect the manifest inventory. If it proposes only obsolete kube-proxy removals, use `--manifests-no-prune` to preserve the existing inventory during the upgrade.
 
-```bash
-talosctl upgrade-k8s \
-  --nodes REPLACE_WITH_CONTROL_PLANE_IP \
-  --to vREPLACE_WITH_TARGET_KUBERNETES_VERSION
-```
+## Post-upgrade checks
 
-Talos pre-pulls images, updates control-plane components, kube-proxy, and kubelet in sequence, then verifies node health. The operation is restartable if it fails.
-
-## Karpenter worker replacement
-
-After a Talos OS upgrade, update the Talos Image Factory schematic and release
-in both locations:
-
-- `terraform/terraform.tfvars` for later fixed-node rebuilds, using
-  `nocloud-amd64.raw.xz`;
-- `kubernetes/karpenter/proxmox-template.yaml` for elastic workers, using the
-  uncompressed `nocloud-amd64.raw` artifact.
-
-Karpenter detects the template change as drift and replaces elastic worker VMs. It respects PodDisruptionBudgets and the NodePool disruption budget. Do not change the worker template until the control plane and bootstrap worker are healthy on the new version.
+1. Confirm every Node is Ready.
+2. Confirm Cilium, CSI, cert-manager, monitoring, and GPU operator workloads are healthy.
+3. Confirm Prometheus targets and Grafana dashboards return current data.
+4. Confirm a PVC-backed application can mount its expected storage.
+5. Record the new version source and run the repository validation commands before committing it.
