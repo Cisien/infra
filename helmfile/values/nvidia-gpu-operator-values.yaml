@@ -13,6 +13,8 @@ nfd:
 
 node-feature-discovery:
   worker:
+    nodeSelector:
+      ai.cisien.com/vendor: nvidia
     tolerations:
       - key: node-role.kubernetes.io/control-plane
         operator: Equal
