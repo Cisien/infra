@@ -130,6 +130,28 @@ releases:
           secretNames:
             - he-credentials
 
+  - name: external-dns-public
+    namespace: external-dns-public
+    createNamespace: true
+    chart: external-dns/external-dns
+    version: 1.21.1
+    needs:
+      - kube-system/cilium
+      - kube-system/sealed-secrets
+    values:
+      - values/external-dns-public-values.yaml
+
+  - name: external-dns-adguard
+    namespace: external-dns-internal
+    createNamespace: true
+    chart: external-dns/external-dns
+    version: 1.21.1
+    needs:
+      - kube-system/cilium
+      - kube-system/sealed-secrets
+    values:
+      - values/external-dns-adguard-values.yaml
+
   - name: sealed-secrets
     namespace: kube-system
     # Artifact Hub identifies the published chart package. The historical

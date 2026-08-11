@@ -1,0 +1,57 @@
+provider:
+  name: webhook
+  webhook:
+    image:
+      repository: ghcr.io/muhlba91/external-dns-provider-adguard
+      tag: v11.1.1
+      pullPolicy: IfNotPresent
+    env:
+      - name: ADGUARD_URL
+        valueFrom:
+          secretKeyRef:
+            name: adguard-credentials
+            key: url
+      - name: ADGUARD_USER
+        valueFrom:
+          secretKeyRef:
+            name: adguard-credentials
+            key: username
+      - name: ADGUARD_PASSWORD
+        valueFrom:
+          secretKeyRef:
+            name: adguard-credentials
+            key: password
+      - name: DOMAIN_FILTER
+        value: cisien.com
+      - name: LOG_LEVEL
+        value: info
+    livenessProbe:
+      httpGet:
+        path: /healthz
+        port: http-webhook
+      initialDelaySeconds: 10
+      timeoutSeconds: 5
+    readinessProbe:
+      httpGet:
+        path: /healthz
+        port: http-webhook
+      initialDelaySeconds: 10
+      timeoutSeconds: 5
+    service:
+      port: 8888
+
+interval: 24h
+triggerLoopOnEvent: true
+sources:
+  - crd
+policy: upsert-only
+registry: txt
+txtOwnerId: external-dns-adguard
+txtPrefix: _externaldns-adguard-
+domainFilters:
+  - cisien.com
+labelFilter: dns.cisien.com/scope=adguard
+managedRecordTypes:
+  - A
+extraArgs:
+  webhook-provider-url: http://localhost:8888

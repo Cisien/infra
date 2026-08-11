@@ -24,6 +24,22 @@ kubectl apply --dry-run=server -k .
 
 The target cluster must already contain the CRDs for Grafana Operator, Prometheus Operator, Gateway API, and the AMD GPU operator. A server-side dry run does not create a Namespace for other resources in the same request.
 
+## Split-horizon ExternalDNS
+
+Public `.com` Gateway names use two DNS views:
+
+- HE public DNS stores CNAMEs to `cable.cisien.com`, which tracks the dynamic public address.
+- AdGuard Home at `192.168.1.2` stores A rewrites to the public Gateway address `172.16.0.240` for LAN clients.
+
+Internal service names are not published in HE DNS. AdGuard stores individual A rewrites for `.local.cisien.com` names to the internal Gateway at `172.16.0.239`. The wildcard certificate does not create a wildcard DNS record.
+
+The two ExternalDNS Helm releases use CRD sources only and label filters:
+
+- `external-dns-public` manages `dns.cisien.com/scope=public-he` CNAME endpoints in HE.
+- `external-dns-adguard` manages `dns.cisien.com/scope=adguard` A endpoints in AdGuard Home.
+
+Add explicit `DNSEndpoint` objects in `adguard-dns-endpoints.yaml` before publishing a new Gateway hostname. Keep the HE and AdGuard objects separate. Both releases use `upsert-only` and a 24-hour polling interval with event-triggered reconciliation. The HE webhook uses separate ExternalDNS credentials from cert-manager; cert-manager continues to manage only ACME TXT records.
+
 ## Storage policy
 
 Application storage uses the StorageClass selected by each manifest. Prometheus and Grafana use Ceph RBD. GPU-worker model storage is a static, retained local PV on its matching physical node. It has no failover capability.

@@ -11,6 +11,8 @@ resources:
   - secrets/oci-registry-pull.sealed.yaml
   - secrets/litellm-auth.sealed.yaml
   - secrets/flux-huggingface.sealed.yaml
+  - secrets/external-dns-he.sealed.yaml
+  - secrets/external-dns-adguard.sealed.yaml
   - ceph-rbd.yaml
   - searx.yaml
   - wavelog.yaml
@@ -27,6 +29,7 @@ resources:
   - ai-internal-routes.yaml
   - ai-flux.yaml
   - laguna-chat-template.yaml
+  - adguard-dns-endpoints.yaml
   - ai-amd-node-metadata.yaml
   - amd-gpu-device-config.yaml
   - gpu-dashboard.yaml

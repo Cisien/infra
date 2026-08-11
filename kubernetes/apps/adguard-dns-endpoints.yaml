@@ -1,0 +1,125 @@
+apiVersion: externaldns.k8s.io/v1alpha1
+kind: DNSEndpoint
+metadata:
+  name: ai-public-he
+  namespace: ai
+  labels:
+    dns.cisien.com/scope: public-he
+spec:
+  endpoints:
+    - dnsName: ai.cisien.com
+      recordType: CNAME
+      targets:
+        - cable.cisien.com
+---
+apiVersion: externaldns.k8s.io/v1alpha1
+kind: DNSEndpoint
+metadata:
+  name: registry-public-he
+  namespace: ai
+  labels:
+    dns.cisien.com/scope: public-he
+spec:
+  endpoints:
+    - dnsName: registry.cisien.com
+      recordType: CNAME
+      targets:
+        - cable.cisien.com
+---
+apiVersion: externaldns.k8s.io/v1alpha1
+kind: DNSEndpoint
+metadata:
+  name: home-assistant-public-he
+  namespace: external-services
+  labels:
+    dns.cisien.com/scope: public-he
+spec:
+  endpoints:
+    - dnsName: ha.cisien.com
+      recordType: CNAME
+      targets:
+        - cable.cisien.com
+---
+apiVersion: externaldns.k8s.io/v1alpha1
+kind: DNSEndpoint
+metadata:
+  name: nextcloud-public-he
+  namespace: external-services
+  labels:
+    dns.cisien.com/scope: public-he
+spec:
+  endpoints:
+    - dnsName: cloud.cisien.com
+      recordType: CNAME
+      targets:
+        - cable.cisien.com
+---
+apiVersion: externaldns.k8s.io/v1alpha1
+kind: DNSEndpoint
+metadata:
+  name: ai-public-adguard
+  namespace: ai
+  labels:
+    dns.cisien.com/scope: adguard
+spec:
+  endpoints:
+    - dnsName: ai.cisien.com
+      recordType: A
+      targets:
+        - 172.16.0.240
+---
+apiVersion: externaldns.k8s.io/v1alpha1
+kind: DNSEndpoint
+metadata:
+  name: registry-public-adguard
+  namespace: ai
+  labels:
+    dns.cisien.com/scope: adguard
+spec:
+  endpoints:
+    - dnsName: registry.cisien.com
+      recordType: A
+      targets:
+        - 172.16.0.240
+---
+apiVersion: externaldns.k8s.io/v1alpha1
+kind: DNSEndpoint
+metadata:
+  name: home-assistant-public-adguard
+  namespace: external-services
+  labels:
+    dns.cisien.com/scope: adguard
+spec:
+  endpoints:
+    - dnsName: ha.cisien.com
+      recordType: A
+      targets:
+        - 172.16.0.240
+---
+apiVersion: externaldns.k8s.io/v1alpha1
+kind: DNSEndpoint
+metadata:
+  name: nextcloud-public-adguard
+  namespace: external-services
+  labels:
+    dns.cisien.com/scope: adguard
+spec:
+  endpoints:
+    - dnsName: cloud.cisien.com
+      recordType: A
+      targets:
+        - 172.16.0.240
+---
+apiVersion: externaldns.k8s.io/v1alpha1
+kind: DNSEndpoint
+metadata:
+  name: litellm-internal-adguard
+  namespace: ai
+  labels:
+    dns.cisien.com/scope: adguard
+spec:
+  endpoints:
+    - dnsName: litellm.local.cisien.com
+      recordType: A
+      targets:
+        - 172.16.0.239

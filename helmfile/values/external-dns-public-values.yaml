@@ -1,0 +1,54 @@
+provider:
+  name: webhook
+  webhook:
+    image:
+      repository: codeberg.org/waldner/external-dns-webhook-he
+      tag: 0.0.6
+      pullPolicy: IfNotPresent
+    env:
+      - name: WEBHOOK_HE_USERNAME
+        valueFrom:
+          secretKeyRef:
+            name: he-credentials
+            key: username
+      - name: WEBHOOK_HE_PASSWORD
+        valueFrom:
+          secretKeyRef:
+            name: he-credentials
+            key: password
+      - name: WEBHOOK_HE_DOMAIN_FILTER
+        value: cisien.com
+      - name: WEBHOOK_HE_LOG_LEVEL
+        value: info
+    securityContext:
+      runAsNonRoot: false
+    livenessProbe:
+      httpGet:
+        path: /health
+        port: 3333
+      initialDelaySeconds: 10
+      timeoutSeconds: 5
+    readinessProbe:
+      httpGet:
+        path: /health
+        port: 3333
+      initialDelaySeconds: 10
+      timeoutSeconds: 5
+    service:
+      port: 3333
+
+interval: 24h
+triggerLoopOnEvent: true
+sources:
+  - crd
+policy: upsert-only
+registry: txt
+txtOwnerId: external-dns-public-he
+txtPrefix: _externaldns-public-
+domainFilters:
+  - cisien.com
+labelFilter: dns.cisien.com/scope=public-he
+managedRecordTypes:
+  - CNAME
+extraArgs:
+  webhook-provider-url: http://localhost:3333
