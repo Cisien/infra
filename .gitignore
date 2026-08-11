@@ -7,6 +7,9 @@ crash.log
 terraform.tfvars
 talosconfig
 kubeconfig
+.env
+.env.*
+!.env.example
 kubernetes/karpenter/proxmox-config.secret.yaml
 kubernetes/karpenter/talos-values.secret.yaml
 kubernetes/gateway/gateway-tls.secret.yaml
