@@ -58,11 +58,14 @@ The `ai` namespace has three separate layers:
 
 - `oci-registry` is the internal OCI Distribution registry. Its data PVC uses `nas-nfs`.
 - `litellm` is the stable OpenAI-compatible text gateway. It maps public model names to internal runtime Services. The LAN-only internal Gateway is available at `http://litellm.local.cisien.com/v1` and `https://litellm.local.cisien.com/v1`; it uses `172.16.0.239`, has no HTTP redirect, and uses a publicly trusted wildcard certificate issued through the HE DNS-01 webhook. It is separate from the public Gateway address `172.16.0.240`.
+- `litellm-db` is the retained PostgreSQL backend for LiteLLM UI users, keys, and spend data. LiteLLM requires `DATABASE_URL` for UI authentication; the database credentials and URL are SealedSecrets, and the database uses the retained `proxmox-ceph-rbd` StorageClass.
 - Each runtime is its own Deployment and Service. Runtime flags, images, GPU placement, and model artifacts are explicit in its manifest.
 
-The active aliases are `incompetent-robot`, `robot`, and `robot-laguna`. Model blobs are OCI artifacts in `ai.cisien.com/ai-models`. Each runtime init container copies its selected immutable tag to a retained node-local cache before it starts llama.cpp.
+The active aliases are `incompetent-robot`, `robot`, `robot-laguna`, and `gemma-classifier`. `gemma-classifier` is the always-on small AMD model for simple requests and request classification. Model blobs are OCI artifacts in `ai.cisien.com/ai-models`. Each runtime init container copies its selected immutable tag to a retained node-local cache before it starts llama.cpp.
 
-All GPU runtime Deployments start at zero replicas. This prevents an incomplete model import from starting a Pod. It also prevents two AMD workloads from claiming the one AMD GPU. Set exactly one of `amd-qwen`, `amd-laguna`, or `flux-image` to one replica when that workload must run. `nvidia-qwopus` can run independently on both NVIDIA GPUs.
+All GPU runtime Deployments start at zero replicas. This prevents an incomplete model import from starting a Pod. The AMD runtimes use the shared `ai/shared-amd-gpu` Dynamic Resource Allocation claim, so independent AMD Pods can share the same physical GPU. GPU memory and compute contention remain application-level concerns. Set any combination of `amd-qwen`, `amd-laguna`, or `flux-image` to one replica when testing concurrent access. `nvidia-qwopus` can run independently on both NVIDIA GPUs.
+
+The AMD GPU Operator uses its DRA driver instead of the legacy device plugin. The DRA driver is pinned to `rocm/k8s-gpu-dra-driver:v1.0.1`; the `latest` image is not used because it published an invalid empty driver-version attribute on this Talos host. Karpenter cannot provision DRA Pods, so AMD workloads must tolerate the GPU taint and target the existing AMD node.
 
 Use `registry.cisien.com` for OCI clients. It is separate from `ai.cisien.com`, which belongs to Open WebUI. The registry requires the `registry` account stored in the `oci-registry-client` Secret. Do not copy that Secret into source control.
 

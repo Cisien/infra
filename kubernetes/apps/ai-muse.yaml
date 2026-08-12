@@ -1,0 +1,160 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: amd-muse
+  namespace: ai
+spec:
+  replicas: 0
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: amd-muse
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: amd-muse
+    spec:
+      nodeSelector:
+        ai.cisien.com/vendor: amd
+      tolerations:
+        - key: ai.cisien.com/gpu
+          operator: Equal
+          value: "true"
+          effect: NoSchedule
+      resourceClaims:
+        - name: amd-gpu
+          resourceClaimName: shared-amd-gpu
+      imagePullSecrets:
+        - name: oci-registry-pull
+      initContainers:
+        - name: model-cache
+          image: ghcr.io/oras-project/oras:v1.3.0
+          command: ["/bin/sh", "-ec"]
+          args:
+            - |
+              cache=/models/muse-glimmer-strix
+              complete="$cache/.complete"
+              if test -f "$complete"; then exit 0; fi
+              tmp=$(mktemp -d /models/.muse-glimmer-strix.XXXXXX)
+              trap 'rm -rf "$tmp"' EXIT
+              oras pull --username "$OCI_USERNAME" --password "$OCI_PASSWORD" --output "$tmp" registry.cisien.com/ai-models/muse-glimmer-30b-rocmfp4-strix:2026-08-11-r1
+              test -f "$tmp/muse-glimmer-30B-ROCmFP4-STRIX.gguf"
+              test -f "$tmp/dflash-ROCmFP4-STRIX.gguf"
+              test -f "$tmp/mmproj-kquant.gguf"
+              rm -rf "$cache"
+              mv "$tmp" "$cache"
+              touch "$complete"
+          env:
+            - name: OCI_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: oci-registry-client
+                  key: username
+            - name: OCI_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: oci-registry-client
+                  key: password
+          volumeMounts:
+            - name: models
+              mountPath: /models
+      containers:
+        - name: llama-server
+          image: registry.cisien.com/ai-runtime/llama-rocmfpx-muse-hip:2026.08.11-r4
+          args:
+            - --host
+            - 0.0.0.0
+            - --port
+            - "8080"
+            - --model
+            - /models/muse-glimmer-strix/muse-glimmer-30B-ROCmFP4-STRIX.gguf
+            - --mmproj
+            - /models/muse-glimmer-strix/mmproj-kquant.gguf
+            - --spec-type
+            - draft-dflash
+            - --model-draft
+            - /models/muse-glimmer-strix/dflash-ROCmFP4-STRIX.gguf
+            - --spec-draft-n-max
+            - "15"
+            - --chat-template-kwargs
+            - '{"reasoning_strength":"medium"}'
+            - --alias
+            - robot-muse
+            - --jinja
+            - --no-mmap
+            - --context-shift
+            - --ctx-size
+            - "524288"
+            - --parallel
+            - "2"
+            - --n-gpu-layers
+            - "999"
+            - --flash-attn
+            - "on"
+            - --temp
+            - "1.0"
+            - --top-p
+            - "0.95"
+            - --top-k
+            - "64"
+            - --metrics
+          env:
+            - name: HIP_VISIBLE_DEVICES
+              value: "0"
+            - name: ROCR_VISIBLE_DEVICES
+              value: "0"
+          ports:
+            - name: http
+              containerPort: 8080
+          resources:
+            requests:
+              cpu: "16"
+              memory: 64Gi
+            limits:
+              cpu: "16"
+              memory: 64Gi
+            claims:
+              - name: amd-gpu
+          startupProbe:
+            httpGet:
+              path: /health
+              port: http
+            failureThreshold: 180
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 20
+          volumeMounts:
+            - name: models
+              mountPath: /models
+              readOnly: true
+      volumes:
+        - name: models
+          persistentVolumeClaim:
+            claimName: amd-model-cache
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: amd-muse
+  namespace: ai
+  labels:
+    metrics: llama-cpp
+spec:
+  selector:
+    app.kubernetes.io/name: amd-muse
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http

@@ -60,8 +60,8 @@ spec:
         {
           "datasource": {"type": "prometheus", "uid": "prometheus"},
           "fieldConfig": {"defaults": {"unit": "decmbytes", "custom": {"drawStyle": "line", "fillOpacity": 10, "lineWidth": 2, "showPoints": "never", "spanNulls": true}}, "overrides": []},
-          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4},
           "id": 4,
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 12},
           "options": {"legend": {"calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
           "targets": [{"expr": "DCGM_FI_DEV_FB_USED{Hostname=\"ai-nvidia-01\"}", "legendFormat": "GPU {{gpu}} used", "refId": "A"}],
           "title": "NVIDIA framebuffer used",
@@ -70,8 +70,8 @@ spec:
         {
           "datasource": {"type": "prometheus", "uid": "prometheus"},
           "fieldConfig": {"defaults": {"unit": "celsius", "custom": {"drawStyle": "line", "fillOpacity": 10, "lineWidth": 2, "showPoints": "never", "spanNulls": true}}, "overrides": [{"matcher": {"id": "byName", "options": "Power"}, "properties": [{"id": "unit", "value": "watt"}]}]},
-          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 12},
           "id": 5,
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 20},
           "options": {"legend": {"calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
           "targets": [{"expr": "DCGM_FI_DEV_GPU_TEMP{Hostname=\"ai-nvidia-01\"}", "legendFormat": "Temperature", "refId": "A"}, {"expr": "DCGM_FI_DEV_POWER_USAGE{Hostname=\"ai-nvidia-01\"}", "legendFormat": "Power", "refId": "B"}],
           "title": "NVIDIA temperature and power",
@@ -80,8 +80,8 @@ spec:
         {
           "datasource": {"type": "prometheus", "uid": "prometheus"},
           "fieldConfig": {"defaults": {"unit": "percent", "custom": {"drawStyle": "line", "fillOpacity": 10, "lineWidth": 2, "showPoints": "never", "spanNulls": true}}, "overrides": []},
-          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 12},
           "id": 6,
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4},
           "options": {"legend": {"calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
           "targets": [{"expr": "max by (hostname, gpu_id) (gpu_gfx_activity{hostname=\"ai-amd-01\"})", "legendFormat": "GPU {{gpu_id}}", "refId": "A"}],
           "title": "AMD graphics activity",
@@ -89,22 +89,22 @@ spec:
         },
         {
           "datasource": {"type": "prometheus", "uid": "prometheus"},
-          "fieldConfig": {"defaults": {"unit": "watt", "custom": {"drawStyle": "line", "fillOpacity": 10, "lineWidth": 2, "showPoints": "never", "spanNulls": true}}, "overrides": []},
-          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 20},
+          "fieldConfig": {"defaults": {"unit": "celsius", "custom": {"drawStyle": "line", "fillOpacity": 10, "lineWidth": 2, "showPoints": "never", "spanNulls": true}}, "overrides": [{"matcher": {"id": "byName", "options": "Power GPU 0"}, "properties": [{"id": "unit", "value": "watt"}]}]},
           "id": 7,
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 12},
           "options": {"legend": {"calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
-          "targets": [{"expr": "max by (hostname, gpu_id) (gpu_average_package_power{hostname=\"ai-amd-01\"})", "legendFormat": "GPU {{gpu_id}}", "refId": "A"}],
-          "title": "AMD package power",
+          "targets": [{"expr": "max by (hostname, gpu_id) (gpu_average_package_power{hostname=\"ai-amd-01\"})", "legendFormat": "Power GPU {{gpu_id}}", "refId": "A"}, {"expr": "node_hwmon_temp_celsius{instance=\"172.16.200.106:9100\"} * on (instance, chip) group_left(chip_name) node_hwmon_chip_names{instance=\"172.16.200.106:9100\", chip_name=\"amdgpu\"}", "legendFormat": "Temperature {{sensor}}", "refId": "B"}],
+          "title": "AMD temperature and package power",
           "type": "timeseries"
         },
         {
           "datasource": {"type": "prometheus", "uid": "prometheus"},
-          "fieldConfig": {"defaults": {"unit": "hertz", "custom": {"drawStyle": "line", "fillOpacity": 10, "lineWidth": 2, "showPoints": "never", "spanNulls": true}}, "overrides": []},
-          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 20},
+          "fieldConfig": {"defaults": {"unit": "decmbytes", "custom": {"drawStyle": "line", "fillOpacity": 10, "lineWidth": 2, "showPoints": "never", "spanNulls": true}}, "overrides": []},
           "id": 8,
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 20},
           "options": {"legend": {"calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
-          "targets": [{"expr": "max by (hostname, gpu_id) (gpu_clock{hostname=\"ai-amd-01\", clock_type=\"fabric\"}) * 1000000", "legendFormat": "GPU {{gpu_id}}", "refId": "A"}],
-          "title": "AMD fabric clock",
+          "targets": [{"expr": "max by (hostname, gpu_id) (gpu_used_vram{hostname=\"ai-amd-01\"})", "legendFormat": "Used GPU {{gpu_id}}", "refId": "A"}, {"expr": "max by (hostname, gpu_id) (gpu_free_vram{hostname=\"ai-amd-01\"})", "legendFormat": "Free GPU {{gpu_id}}", "refId": "B"}],
+          "title": "AMD memory utilization",
           "type": "timeseries"
         }
       ],

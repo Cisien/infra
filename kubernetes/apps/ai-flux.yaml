@@ -37,6 +37,9 @@ spec:
           operator: Equal
           value: "true"
           effect: NoSchedule
+      resourceClaims:
+        - name: amd-gpu
+          resourceClaimName: shared-amd-gpu
       imagePullSecrets:
         - name: oci-registry-pull
       securityContext:
@@ -135,11 +138,11 @@ spec:
             requests:
               cpu: "16"
               memory: 64Gi
-              amd.com/gpu: 1
             limits:
               cpu: "16"
               memory: 64Gi
-              amd.com/gpu: 1
+            claims:
+              - name: amd-gpu
           startupProbe:
             httpGet:
               path: /health

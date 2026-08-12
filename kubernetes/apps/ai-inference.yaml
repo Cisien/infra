@@ -49,6 +49,16 @@ data:
           model: openai/robot-laguna
           api_base: http://amd-laguna.ai.svc.cluster.local:8080/v1
           api_key: none
+      - model_name: gemma-classifier
+        litellm_params:
+          model: openai/gemma-classifier
+          api_base: http://amd-gemma.ai.svc.cluster.local:8080/v1
+          api_key: none
+      - model_name: robot-muse
+        litellm_params:
+          model: openai/robot-muse
+          api_base: http://amd-muse.ai.svc.cluster.local:8080/v1
+          api_key: none
     litellm_settings:
       drop_params: false
     general_settings:
@@ -88,6 +98,13 @@ spec:
                 secretKeyRef:
                   name: litellm-auth
                   key: master-key
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: litellm-database
+                  key: DATABASE_URL
+            - name: STORE_MODEL_IN_DB
+              value: "True"
           startupProbe:
             httpGet:
               path: /health/liveliness
@@ -139,7 +156,7 @@ metadata:
   name: nvidia-qwopus
   namespace: ai
 spec:
-  replicas: 0
+  replicas: 1
   strategy:
     type: RollingUpdate
     rollingUpdate:
@@ -171,7 +188,7 @@ spec:
               if test -f "$complete"; then exit 0; fi
               tmp=$(mktemp -d /models/.qwopus-q6.XXXXXX)
               trap 'rm -rf "$tmp"' EXIT
-              oras pull --username "$OCI_USERNAME" --password "$OCI_PASSWORD" --output "$tmp" registry.cisien.com/ai-models/qwopus-q6:2026-08-10
+              oras pull --username "$OCI_USERNAME" --password "$OCI_PASSWORD" --output "$tmp" registry.cisien.com/ai-models/qwopus-q6:2026-08-11-r2
               test -f "$tmp/Qwopus3.6-27B-v2-MTP-Q6_K.gguf"
               rm -rf "$cache"
               mv "$tmp" "$cache"
@@ -271,6 +288,8 @@ kind: Service
 metadata:
   name: nvidia-qwopus
   namespace: ai
+  labels:
+    metrics: llama-cpp
 spec:
   selector:
     app.kubernetes.io/name: nvidia-qwopus
@@ -285,7 +304,7 @@ metadata:
   name: amd-qwen
   namespace: ai
 spec:
-  replicas: 0
+  replicas: 1
   strategy:
     type: RollingUpdate
     rollingUpdate:
@@ -306,19 +325,27 @@ spec:
           operator: Equal
           value: "true"
           effect: NoSchedule
+      resourceClaims:
+        - name: amd-gpu
+          resourceClaimName: shared-amd-gpu
+      imagePullSecrets:
+        - name: oci-registry-pull
       initContainers:
         - name: model-cache
           image: ghcr.io/oras-project/oras:v1.3.0
           command: ["/bin/sh", "-ec"]
           args:
             - |
-              cache=/models/qwen-q8
+              cache=/models/qwen-mtp
               complete="$cache/.complete"
               if test -f "$complete"; then exit 0; fi
-              tmp=$(mktemp -d /models/.qwen-q8.XXXXXX)
+              tmp=$(mktemp -d /models/.qwen-mtp.XXXXXX)
               trap 'rm -rf "$tmp"' EXIT
-              oras pull --username "$OCI_USERNAME" --password "$OCI_PASSWORD" --output "$tmp" registry.cisien.com/ai-models/qwen-35b-a3b-q8:2026-08-10
-              test -f "$tmp/Qwen3.6-35B-A3B-UD-Q8_K_XL.gguf"
+              oras pull --username "$OCI_USERNAME" --password "$OCI_PASSWORD" --output "$tmp" registry.cisien.com/ai-models/qwen-27b-mtp-rocmfp4:2026-08-11-r1
+              test -f "$tmp/Qwen3.6-27B-MTP-ROCmFP4-STRIX-imatrix-embF16-headQ6.gguf"
+              test -f "$tmp/mmproj-F32.gguf"
+              test -f "$tmp/chat_template.jinja"
+              test -f "$tmp/qwen3.6-27b-code.imatrix"
               rm -rf "$cache"
               mv "$tmp" "$cache"
               touch "$complete"
@@ -338,18 +365,44 @@ spec:
               mountPath: /models
       containers:
         - name: llama-server
-          image: ghcr.io/ggml-org/llama.cpp:server-rocm
+          image: registry.cisien.com/ai-runtime/llama-rocmfpx-qwen-mtp:2026.08.11-r1
           args:
             - --host
             - 0.0.0.0
             - --port
             - "8080"
             - --model
-            - /models/qwen-q8/Qwen3.6-35B-A3B-UD-Q8_K_XL.gguf
+            - /models/qwen-mtp/Qwen3.6-27B-MTP-ROCmFP4-STRIX-imatrix-embF16-headQ6.gguf
             - --alias
             - robot
-            - --prio
-            - "3"
+            - -dev
+            - Vulkan0
+            - -ngl
+            - "999"
+            - -fa
+            - on
+            - -c
+            - "262144"
+            - -b
+            - "2048"
+            - -ub
+            - "256"
+            - -t
+            - "16"
+            - -tb
+            - "16"
+            - -ctk
+            - f16
+            - -ctv
+            - f16
+            - -cpent
+            - "256"
+            - -ctxcp
+            - "32"
+            - --cache-reuse
+            - "256"
+            - --cache-ram
+            - "65536"
             - --temp
             - "0.6"
             - --top-p
@@ -358,30 +411,51 @@ spec:
             - "20"
             - --min-p
             - "0.0"
-            - --presence_penalty
-            - "0.5"
-            - --ctx-size
-            - "786432"
-            - --no-mmap
-            - -ngl
-            - "999"
-            - -fa
-            - "1"
-            - --threads
-            - "16"
-            - --parallel
-            - "3"
-            - --reasoning
-            - "off"
             - --spec-type
             - draft-mtp
+            - --spec-draft-device
+            - Vulkan0
+            - --spec-draft-ngl
+            - all
+            - --spec-draft-type-k
+            - f16
+            - --spec-draft-type-v
+            - f16
             - --spec-draft-n-max
-            - "3"
+            - "5"
+            - --spec-draft-n-min
+            - "0"
+            - --spec-draft-p-min
+            - "0.0"
+            - --spec-draft-p-split
+            - "0.10"
+            - --chat-template-file
+            - /models/qwen-mtp/chat_template.jinja
+            - --reasoning
+            - on
+            - --reasoning-format
+            - deepseek
+            - --chat-template-kwargs
+            - '{"preserve_thinking":true}'
+            - --jinja
+            - --parallel
+            - "1"
+            - --metrics
+            - --no-mmap
+            - --mmproj
+            - /models/qwen-mtp/mmproj-F32.gguf
+            - --image-min-tokens
+            - "1024"
+
           env:
             - name: HIP_VISIBLE_DEVICES
               value: "0"
             - name: ROCR_VISIBLE_DEVICES
               value: "0"
+            - name: HSA_OVERRIDE_GFX_VERSION
+              value: "11.5.1"
+            - name: GGML_HIP_ENABLE_UNIFIED_MEMORY
+              value: "1"
           ports:
             - name: http
               containerPort: 8080
@@ -389,11 +463,11 @@ spec:
             requests:
               cpu: "16"
               memory: 64Gi
-              amd.com/gpu: 1
             limits:
               cpu: "16"
               memory: 64Gi
-              amd.com/gpu: 1
+            claims:
+              - name: amd-gpu
           startupProbe:
             httpGet:
               path: /health
@@ -424,6 +498,8 @@ kind: Service
 metadata:
   name: amd-qwen
   namespace: ai
+  labels:
+    metrics: llama-cpp
 spec:
   selector:
     app.kubernetes.io/name: amd-qwen
@@ -459,6 +535,9 @@ spec:
           operator: Equal
           value: "true"
           effect: NoSchedule
+      resourceClaims:
+        - name: amd-gpu
+          resourceClaimName: shared-amd-gpu
       imagePullSecrets:
         - name: oci-registry-pull
       initContainers:
@@ -566,11 +645,11 @@ spec:
             requests:
               cpu: "16"
               memory: 64Gi
-              amd.com/gpu: 1
             limits:
               cpu: "16"
               memory: 64Gi
-              amd.com/gpu: 1
+            claims:
+              - name: amd-gpu
           startupProbe:
             httpGet:
               path: /health
@@ -608,6 +687,8 @@ kind: Service
 metadata:
   name: amd-laguna
   namespace: ai
+  labels:
+    metrics: llama-cpp
 spec:
   selector:
     app.kubernetes.io/name: amd-laguna

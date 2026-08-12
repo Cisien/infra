@@ -27,6 +27,7 @@ deviceConfig:
     driver:
       enable: false
     devicePlugin:
+      enableDevicePlugin: false
       devicePluginTolerations:
         - key: ai.cisien.com/gpu
           operator: Equal
@@ -48,3 +49,11 @@ deviceConfig:
           enable: true
           labels:
             release: monitoring
+    draDriver:
+      enable: true
+      image: docker.io/rocm/k8s-gpu-dra-driver:v1.0.1
+      tolerations:
+        - key: ai.cisien.com/gpu
+          operator: Equal
+          value: "true"
+          effect: NoSchedule

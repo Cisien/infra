@@ -36,7 +36,7 @@ spec:
       image: docker.io/rocm/gpu-operator-utils:latest
       imagePullPolicy: IfNotPresent
   devicePlugin:
-    enableDevicePlugin: true
+    enableDevicePlugin: false
     devicePluginImage: rocm/k8s-device-plugin:latest
     devicePluginImagePullPolicy: IfNotPresent
     devicePluginTolerations:
@@ -100,9 +100,14 @@ spec:
       maxUnavailable: 1
       upgradeStrategy: RollingUpdate
   draDriver:
-    enable: false
-    image: docker.io/rocm/k8s-gpu-dra-driver:latest
+    enable: true
+    image: docker.io/rocm/k8s-gpu-dra-driver:v1.0.1
     imagePullPolicy: IfNotPresent
+    tolerations:
+      - key: ai.cisien.com/gpu
+        operator: Equal
+        value: "true"
+        effect: NoSchedule
     upgradePolicy:
       maxUnavailable: 1
       upgradeStrategy: RollingUpdate

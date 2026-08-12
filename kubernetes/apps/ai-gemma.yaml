@@ -1,0 +1,149 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: amd-gemma
+  namespace: ai
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: amd-gemma
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: amd-gemma
+    spec:
+      nodeSelector:
+        ai.cisien.com/vendor: amd
+      tolerations:
+        - key: ai.cisien.com/gpu
+          operator: Equal
+          value: "true"
+          effect: NoSchedule
+      resourceClaims:
+        - name: amd-gpu
+          resourceClaimName: shared-amd-gpu
+      initContainers:
+        - name: model-cache
+          image: ghcr.io/oras-project/oras:v1.3.0
+          command: ["/bin/sh", "-ec"]
+          args:
+            - |
+              cache=/models/gemma-4-e4b-q4
+              complete="$cache/.complete"
+              if test -f "$complete"; then exit 0; fi
+              tmp=$(mktemp -d /models/.gemma-4-e4b-q4.XXXXXX)
+              trap 'rm -rf "$tmp"' EXIT
+              oras pull --username "$OCI_USERNAME" --password "$OCI_PASSWORD" --output "$tmp" registry.cisien.com/ai-models/gemma-4-e4b-q4:2026-08-11-r2
+              model_file=$(find "$tmp" -type f -name 'gemma-4-E4B-it-Q4_K_M.gguf' | head -n 1)
+              test -n "$model_file"
+              model_dir=$(dirname "$model_file")
+              rm -rf "$cache"
+              mv "$model_dir" "$cache"
+              touch "$complete"
+          env:
+            - name: OCI_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: oci-registry-client
+                  key: username
+            - name: OCI_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: oci-registry-client
+                  key: password
+          volumeMounts:
+            - name: models
+              mountPath: /models
+      containers:
+        - name: llama-server
+          image: ghcr.io/ggml-org/llama.cpp:server-rocm
+          args:
+            - --host
+            - 0.0.0.0
+            - --port
+            - "8080"
+            - --model
+            - /models/gemma-4-e4b-q4/gemma-4-E4B-it-Q4_K_M.gguf
+            - --alias
+            - gemma-classifier
+            - --jinja
+            - --ctx-size
+            - "32768"
+            - --parallel
+            - "4"
+            - --n-gpu-layers
+            - "999"
+            - --flash-attn
+            - "on"
+            - --threads
+            - "16"
+            - --temp
+            - "0.2"
+            - --top-p
+            - "0.9"
+            - --top-k
+            - "40"
+            - --min-p
+            - "0.0"
+            - --reasoning
+            - "off"
+            - --metrics
+          env:
+            - name: HIP_VISIBLE_DEVICES
+              value: "0"
+            - name: ROCR_VISIBLE_DEVICES
+              value: "0"
+          ports:
+            - name: http
+              containerPort: 8080
+          resources:
+            requests:
+              cpu: "8"
+              memory: 16Gi
+            limits:
+              cpu: "8"
+              memory: 16Gi
+            claims:
+              - name: amd-gpu
+          startupProbe:
+            httpGet:
+              path: /health
+              port: http
+            failureThreshold: 180
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 20
+          volumeMounts:
+            - name: models
+              mountPath: /models
+              readOnly: true
+      volumes:
+        - name: models
+          persistentVolumeClaim:
+            claimName: amd-model-cache
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: amd-gemma
+  namespace: ai
+  labels:
+    metrics: llama-cpp
+spec:
+  selector:
+    app.kubernetes.io/name: amd-gemma
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
