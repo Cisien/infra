@@ -15,6 +15,8 @@ repositories:
     url: https://helm.ngc.nvidia.com/nvidia
   - name: amd-gpu-operator
     url: https://rocm.github.io/gpu-operator
+  - name: project-zot
+    url: https://zotregistry.dev/helm-charts
 
 releases:
   - name: cilium
@@ -170,3 +172,16 @@ releases:
       - kube-system/cilium
     values:
       - values/karpenter-values.yaml
+
+  - name: oci-registry
+    namespace: ai
+    chart: project-zot/zot
+    version: 0.1.122
+    needs:
+      - kube-system/cilium
+      - kube-system/sealed-secrets
+      - kube-system/csi-driver-nfs
+    values:
+      - values/zot-values.yaml
+    strategicMergePatches:
+      - patches/zot-probes.yaml

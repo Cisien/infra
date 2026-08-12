@@ -37,12 +37,12 @@ data:
       - model_name: incompetent-robot
         litellm_params:
           model: openai/incompetent-robot
-          api_base: http://nvidia-qwopus.ai.svc.cluster.local:8080/v1
+          api_base: http://nvidia-qwen.ai.svc.cluster.local:8080/v1
           api_key: none
       - model_name: robot
         litellm_params:
           model: openai/robot
-          api_base: http://amd-qwen.ai.svc.cluster.local:8080/v1
+          api_base: http://amd-qwen-35b.ai.svc.cluster.local:8080/v1
           api_key: none
       - model_name: robot-laguna
         litellm_params:
@@ -158,7 +158,7 @@ metadata:
   name: nvidia-qwopus
   namespace: ai
 spec:
-  replicas: 1
+  replicas: 0
   strategy:
     type: RollingUpdate
     rollingUpdate:
@@ -306,7 +306,7 @@ metadata:
   name: amd-qwen
   namespace: ai
 spec:
-  replicas: 1
+  replicas: 0
   strategy:
     type: RollingUpdate
     rollingUpdate:
@@ -434,7 +434,7 @@ spec:
             - --chat-template-file
             - /models/qwen-mtp/chat_template.jinja
             - --reasoning
-            - on
+            - "on"
             - --reasoning-format
             - deepseek
             - --chat-template-kwargs

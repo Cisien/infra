@@ -56,7 +56,7 @@ Do not put a plain `Secret`, kubeconfig, API token, or password in this director
 
 The `ai` namespace has three separate layers:
 
-- `oci-registry` is the internal OCI Distribution registry. Its data PVC uses `nas-nfs`.
+- `oci-registry` is the internal Zot OCI registry with its web UI. Its data PVC uses `nas-nfs`.
 - `litellm` is the stable OpenAI-compatible text gateway. It maps public model names to internal runtime Services. The LAN-only internal Gateway is available at `http://litellm.local.cisien.com/v1` and `https://litellm.local.cisien.com/v1`; it uses `172.16.0.239`, has no HTTP redirect, and uses a publicly trusted wildcard certificate issued through the HE DNS-01 webhook. It is separate from the public Gateway address `172.16.0.240`.
 - `litellm-db` is the retained PostgreSQL backend for LiteLLM UI users, keys, and spend data. LiteLLM requires `DATABASE_URL` for UI authentication; the database credentials and URL are SealedSecrets, and the database uses the retained `proxmox-ceph-rbd` StorageClass.
 - Each runtime is its own Deployment and Service. Runtime flags, images, GPU placement, and model artifacts are explicit in its manifest.

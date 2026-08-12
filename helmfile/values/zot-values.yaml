@@ -1,0 +1,81 @@
+replicaCount: 1
+
+image:
+  repository: ghcr.io/project-zot/zot
+  tag: v2.1.18
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 5000
+
+httproute:
+  enabled: false
+  parentRefs:
+    - name: public
+      namespace: gateway-system
+      sectionName: https
+  hostnames:
+    - registry.cisien.com
+  path: /
+
+mountConfig: true
+configFiles:
+  config.json: |-
+    {
+      "distSpecVersion": "1.1.1",
+      "storage": {
+        "rootDirectory": "/var/lib/registry",
+        "gc": true,
+        "gcDelay": "24h"
+      },
+      "http": {
+        "address": "0.0.0.0",
+        "port": "5000",
+        "readTimeout": "30m",
+        "writeTimeout": "30m",
+        "auth": {
+          "htpasswd": {
+            "path": "/secret/htpasswd"
+          }
+        },
+        "accessControl": {
+          "adminPolicy": {
+            "users": ["registry"],
+            "actions": ["read", "create", "update", "delete"]
+          }
+        }
+      },
+      "extensions": {
+        "search": {
+          "enable": true
+        },
+        "ui": {
+          "enable": true
+        }
+      },
+      "log": {
+        "level": "info"
+      }
+    }
+
+persistence: true
+pvc:
+  create: false
+  name: oci-zot-data
+  accessModes:
+    - ReadWriteMany
+  storageClassName: nas-nfs
+
+externalSecrets:
+  - secretName: oci-registry-auth
+    mountPath: /secret
+
+strategy:
+  type: Recreate
+
+nodeSelector:
+  kubernetes.io/hostname: base-workers-hzj89
+
+test:
+  enabled: false

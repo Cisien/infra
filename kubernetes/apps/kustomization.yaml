@@ -26,9 +26,11 @@ resources:
   - metrics-dashboards.yaml
   - external-services.yaml
   - ai-local-storage.yaml
-  - ai-registry.yaml
+  - ai-registry-pvc.yaml
+  - ai-registry-route.yaml
   - ai-database.yaml
   - ai-inference.yaml
+  - ai-qwen-unsloth.yaml
   - ai-gemma.yaml
   - ai-muse.yaml
   - ai-internal-routes.yaml

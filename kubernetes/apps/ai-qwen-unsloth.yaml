@@ -1,0 +1,248 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nvidia-qwen
+  namespace: ai
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: nvidia-qwen
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: nvidia-qwen
+    spec:
+      nodeSelector:
+        ai.cisien.com/vendor: nvidia
+      tolerations:
+        - key: ai.cisien.com/gpu
+          operator: Equal
+          value: "true"
+          effect: NoSchedule
+      containers:
+        - name: llama-server
+          image: ghcr.io/ggml-org/llama.cpp:server-cuda
+          args:
+            - --host
+            - 0.0.0.0
+            - -hf
+            - unsloth/Qwen3.6-27B-MTP-GGUF:UD-Q6_K_XL
+            - --parallel
+            - "1"
+            - --jinja
+            - --ctx-size
+            - "262144"
+            - --fit
+            - "off"
+            - --no-mmap
+            - --temp
+            - "1"
+            - --min-p
+            - "0.01"
+            - --top-p
+            - "0.95"
+            - --top-k
+            - "65"
+            - --alias
+            - incompetent-robot
+            - --threads
+            - "18"
+            - --flash-attn
+            - "on"
+            - --cache-type-k
+            - q8_0
+            - --cache-type-v
+            - q8_0
+            - --metrics
+            - --cache-ram
+            - "32768"
+            - --spec-type
+            - draft-mtp
+            - --spec-draft-n-max
+            - "2"
+          env:
+            - name: LLAMA_CACHE
+              value: /models
+          ports:
+            - name: http
+              containerPort: 8080
+          resources:
+            requests:
+              cpu: "18"
+              memory: 40Gi
+              nvidia.com/gpu: 2
+            limits:
+              cpu: "18"
+              memory: 40Gi
+              nvidia.com/gpu: 2
+          startupProbe:
+            httpGet:
+              path: /health
+              port: http
+            failureThreshold: 180
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 20
+          volumeMounts:
+            - name: models
+              mountPath: /models
+      volumes:
+        - name: models
+          persistentVolumeClaim:
+            claimName: nvidia-model-cache
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nvidia-qwen
+  namespace: ai
+  labels:
+    metrics: llama-cpp
+spec:
+  selector:
+    app.kubernetes.io/name: nvidia-qwen
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: amd-qwen-35b
+  namespace: ai
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: amd-qwen-35b
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: amd-qwen-35b
+    spec:
+      nodeSelector:
+        ai.cisien.com/vendor: amd
+      tolerations:
+        - key: ai.cisien.com/gpu
+          operator: Equal
+          value: "true"
+          effect: NoSchedule
+      resourceClaims:
+        - name: amd-gpu
+          resourceClaimName: shared-amd-gpu
+      containers:
+        - name: llama-server
+          image: ghcr.io/ggml-org/llama.cpp:server-rocm
+          args:
+            - --host
+            - 0.0.0.0
+            - -hf
+            - unsloth/Qwen3.6-35B-A3B-GGUF:UD-Q8_K_XL
+            - --port
+            - "8080"
+            - --alias
+            - robot
+            - --jinja
+            - --n-gpu-layers
+            - "999"
+            - --flash-attn
+            - "on"
+            - --ctx-size
+            - "1048576"
+            - --parallel
+            - "4"
+            - --threads
+            - "16"
+            - --cache-type-k
+            - f16
+            - --cache-type-v
+            - f16
+            - --reasoning
+            - "on"
+            - --reasoning-format
+            - deepseek
+            - --chat-template-kwargs
+            - '{"preserve_thinking":true}'
+            - --metrics
+            - --no-mmap
+          env:
+            - name: LLAMA_CACHE
+              value: /models
+            - name: HIP_VISIBLE_DEVICES
+              value: "0"
+            - name: ROCR_VISIBLE_DEVICES
+              value: "0"
+            - name: HSA_OVERRIDE_GFX_VERSION
+              value: "11.5.1"
+            - name: GGML_HIP_ENABLE_UNIFIED_MEMORY
+              value: "1"
+          ports:
+            - name: http
+              containerPort: 8080
+          resources:
+            requests:
+              cpu: "16"
+              memory: 64Gi
+            limits:
+              cpu: "16"
+              memory: 64Gi
+            claims:
+              - name: amd-gpu
+          startupProbe:
+            httpGet:
+              path: /health
+              port: http
+            failureThreshold: 180
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 20
+          volumeMounts:
+            - name: models
+              mountPath: /models
+      volumes:
+        - name: models
+          persistentVolumeClaim:
+            claimName: amd-model-cache
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: amd-qwen-35b
+  namespace: ai
+  labels:
+    metrics: llama-cpp
+spec:
+  selector:
+    app.kubernetes.io/name: amd-qwen-35b
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
