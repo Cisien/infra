@@ -39,26 +39,19 @@ data:
           model: openai/incompetent-robot
           api_base: http://nvidia-qwen.ai.svc.cluster.local:8080/v1
           api_key: none
+
       - model_name: robot
         litellm_params:
           model: openai/robot
           api_base: http://amd-qwen-35b.ai.svc.cluster.local:8080/v1
           api_key: none
-      - model_name: robot-laguna
-        litellm_params:
-          model: openai/robot-laguna
-          api_base: http://amd-laguna.ai.svc.cluster.local:8080/v1
-          api_key: none
+
       - model_name: gemma-classifier
         litellm_params:
           model: openai/gemma-classifier
           api_base: http://amd-gemma.ai.svc.cluster.local:8080/v1
           api_key: none
-      - model_name: robot-muse
-        litellm_params:
-          model: openai/robot-muse
-          api_base: http://amd-muse.ai.svc.cluster.local:8080/v1
-          api_key: none
+
     litellm_settings:
       drop_params: true
     general_settings:
@@ -79,7 +72,7 @@ spec:
   template:
     metadata:
       annotations:
-        config.cisien.com/litellm-config: "drop-params-enabled"
+        config.cisien.com/litellm-config: "aliased-models-only-v3"
       labels:
         app.kubernetes.io/name: litellm
     spec:
