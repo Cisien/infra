@@ -60,7 +60,7 @@ data:
           api_base: http://amd-muse.ai.svc.cluster.local:8080/v1
           api_key: none
     litellm_settings:
-      drop_params: false
+      drop_params: true
     general_settings:
       master_key: os.environ/LITELLM_MASTER_KEY
 ---
@@ -78,6 +78,8 @@ spec:
       app.kubernetes.io/name: litellm
   template:
     metadata:
+      annotations:
+        config.cisien.com/litellm-config: "drop-params-enabled"
       labels:
         app.kubernetes.io/name: litellm
     spec:
