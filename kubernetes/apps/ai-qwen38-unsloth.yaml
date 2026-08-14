@@ -1,10 +1,10 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: nvidia-qwen
+  name: nvidia-qwen38
   namespace: ai
 spec:
-  replicas: 0
+  replicas: 1
   strategy:
     type: RollingUpdate
     rollingUpdate:
@@ -12,11 +12,11 @@ spec:
       maxUnavailable: 1
   selector:
     matchLabels:
-      app.kubernetes.io/name: nvidia-qwen
+      app.kubernetes.io/name: nvidia-qwen38
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: nvidia-qwen
+        app.kubernetes.io/name: nvidia-qwen38
     spec:
       nodeSelector:
         ai.cisien.com/vendor: nvidia
@@ -32,23 +32,36 @@ spec:
             - --host
             - 0.0.0.0
             - -hf
-            - unsloth/Qwen3.6-27B-MTP-GGUF:UD-Q6_K_XL
+            - unsloth/Qwen3.8-27B-GGUF:UD-Q6_K_XL
             - --parallel
             - "1"
             - --jinja
+            - --image-min-tokens
+            - "1024"
             - --ctx-size
             - "262144"
             - --fit
             - "off"
             - --no-mmap
             - --temp
-            - "1"
+            - "1.0"
             - --min-p
-            - "0.01"
+            - "0.0"
             - --top-p
             - "0.95"
             - --top-k
-            - "65"
+            - "20"
+            - --repeat-penalty
+            - "1.0"
+            - --presence-penalty
+            - "0.0"
+            - --reasoning
+            - "on"
+            - --reasoning-preserve
+            - --reasoning-format
+            - deepseek
+            - --chat-template-kwargs
+            - '{"preserve_thinking":true}'
             - --alias
             - incompetent-robot
             - --threads
@@ -108,13 +121,13 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: nvidia-qwen
+  name: nvidia-qwen38
   namespace: ai
   labels:
     metrics: llama-cpp
 spec:
   selector:
-    app.kubernetes.io/name: nvidia-qwen
+    app.kubernetes.io/name: nvidia-qwen38
   ports:
     - name: http
       port: 8080
@@ -123,10 +136,10 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: amd-qwen-35b
+  name: amd-qwen38
   namespace: ai
 spec:
-  replicas: 0
+  replicas: 1
   strategy:
     type: RollingUpdate
     rollingUpdate:
@@ -134,11 +147,11 @@ spec:
       maxUnavailable: 1
   selector:
     matchLabels:
-      app.kubernetes.io/name: amd-qwen-35b
+      app.kubernetes.io/name: amd-qwen38
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: amd-qwen-35b
+        app.kubernetes.io/name: amd-qwen38
     spec:
       nodeSelector:
         ai.cisien.com/vendor: amd
@@ -157,7 +170,7 @@ spec:
             - --host
             - 0.0.0.0
             - -hf
-            - unsloth/Qwen3.6-35B-A3B-GGUF:UD-Q8_K_XL
+            - unsloth/Qwen3.8-27B-GGUF:UD-Q8_K_XL
             - --port
             - "8080"
             - --alias
@@ -167,6 +180,8 @@ spec:
             - "999"
             - --flash-attn
             - "on"
+            - --image-min-tokens
+            - "1024"
             - --ctx-size
             - "1048576"
             - --parallel
@@ -177,12 +192,29 @@ spec:
             - f16
             - --cache-type-v
             - f16
+            - --temp
+            - "1.0"
+            - --min-p
+            - "0.0"
+            - --top-p
+            - "0.95"
+            - --top-k
+            - "20"
+            - --repeat-penalty
+            - "1.0"
+            - --presence-penalty
+            - "0.0"
             - --reasoning
             - "on"
+            - --reasoning-preserve
             - --reasoning-format
             - deepseek
             - --chat-template-kwargs
             - '{"preserve_thinking":true}'
+            - --spec-type
+            - draft-mtp
+            - --spec-draft-n-max
+            - "2"
             - --metrics
             - --no-mmap
           env:
@@ -235,13 +267,13 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: amd-qwen-35b
+  name: amd-qwen38
   namespace: ai
   labels:
     metrics: llama-cpp
 spec:
   selector:
-    app.kubernetes.io/name: amd-qwen-35b
+    app.kubernetes.io/name: amd-qwen38
   ports:
     - name: http
       port: 8080

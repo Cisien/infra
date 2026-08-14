@@ -37,13 +37,13 @@ data:
       - model_name: incompetent-robot
         litellm_params:
           model: openai/incompetent-robot
-          api_base: http://nvidia-qwen.ai.svc.cluster.local:8080/v1
+          api_base: http://nvidia-qwen38.ai.svc.cluster.local:8080/v1
           api_key: none
 
       - model_name: robot
         litellm_params:
           model: openai/robot
-          api_base: http://amd-qwen-35b.ai.svc.cluster.local:8080/v1
+          api_base: http://amd-qwen38.ai.svc.cluster.local:8080/v1
           api_key: none
 
       - model_name: gemma-classifier
@@ -72,7 +72,7 @@ spec:
   template:
     metadata:
       annotations:
-        config.cisien.com/litellm-config: "aliased-models-only-v3"
+        config.cisien.com/litellm-config: "aliased-models-only-v4"
       labels:
         app.kubernetes.io/name: litellm
     spec:

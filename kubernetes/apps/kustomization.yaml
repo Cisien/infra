@@ -31,6 +31,7 @@ resources:
   - ai-database.yaml
   - ai-inference.yaml
   - ai-qwen-unsloth.yaml
+  - ai-qwen38-unsloth.yaml
   - ai-gemma.yaml
   - ai-muse.yaml
   - ai-internal-routes.yaml
