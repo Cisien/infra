@@ -9,6 +9,7 @@ resources:
   - secrets/oci-registry-auth.sealed.yaml
   - secrets/oci-registry-client.sealed.yaml
   - secrets/oci-registry-pull.sealed.yaml
+  - secrets/palworld-registry-pull.sealed.yaml
   - secrets/litellm-auth.sealed.yaml
   - secrets/flux-huggingface.sealed.yaml
   - secrets/litellm-db-auth.sealed.yaml
@@ -43,3 +44,4 @@ resources:
   - amd-gpu-resource-claim.yaml
   - gpu-dashboard.yaml
   - llama-metrics-dashboard.yaml
+  - palworld.yaml

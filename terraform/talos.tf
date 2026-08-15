@@ -16,23 +16,6 @@ data "talos_machine_configuration" "fixed_node" {
     [
       yamlencode(local.talos_network_patch),
       yamlencode({
-        cluster = {
-          network = {
-            cni = {
-              name = "none"
-            }
-          }
-          proxy = {
-            disabled = true
-          }
-          etcd = {
-            extraArgs = {
-              listen-metrics-urls = "http://0.0.0.0:2381"
-            }
-          }
-        }
-      }),
-      yamlencode({
         machine = {
           network = {
             interfaces = [{
@@ -47,11 +30,41 @@ data "talos_machine_configuration" "fixed_node" {
         }
       }),
     ],
-    each.value.role == "controlplane" ? [yamlencode({
-      cluster = {
-        allowSchedulingOnControlPlanes = false
-      }
-    })] : [],
+    each.value.role == "controlplane" ? [
+      yamlencode({
+        cluster = {
+          etcd = {
+            extraArgs = {
+              listen-metrics-urls = "http://0.0.0.0:2381"
+            }
+          }
+        }
+      }),
+      yamlencode({
+        cluster = {
+          allowSchedulingOnControlPlanes = false
+        }
+      }),
+      ] : [
+      yamlencode({
+        machine = {
+          nodeLabels = {
+            "games.cisien.com/role" = "palworld"
+          }
+          kubelet = {
+            extraArgs = {
+              "register-with-taints" = "games.cisien.com/dedicated=palworld:NoSchedule"
+            }
+          }
+        }
+      }),
+      yamlencode({
+        apiVersion = "v1alpha1"
+        kind       = "UserVolumeConfig"
+        name       = "game-data"
+        volumeType = "directory"
+      }),
+    ],
   )
 }
 
@@ -64,6 +77,20 @@ resource "talos_machine_configuration_apply" "control_plane" {
   apply_mode                  = "auto"
 
   depends_on = [proxmox_virtual_environment_vm.fixed_node]
+}
+
+resource "talos_machine_configuration_apply" "game_worker" {
+  for_each = local.game_nodes
+
+  node                        = each.value.ipv4_address
+  client_configuration        = talos_machine_secrets.this.client_configuration
+  machine_configuration_input = data.talos_machine_configuration.fixed_node[each.key].machine_configuration
+  apply_mode                  = "auto"
+
+  depends_on = [
+    proxmox_virtual_environment_vm.fixed_node,
+    talos_machine_bootstrap.this,
+  ]
 }
 
 resource "talos_machine_bootstrap" "this" {

@@ -89,3 +89,25 @@ variable "control_plane_resources" {
     disk_gb   = 80
   }
 }
+
+variable "game_worker" {
+  description = "Fixed Talos worker for the Palworld server. Its local SSD-backed disk stores non-HA game state."
+  type = object({
+    proxmox_node = string
+    storage_pool = string
+    ipv4_address = string
+    vm_id        = number
+    cpu_cores    = number
+    memory_mb    = number
+    disk_gb      = number
+  })
+  default = {
+    proxmox_node = "pve-04"
+    storage_pool = "ssd-pool"
+    ipv4_address = "172.16.0.233"
+    vm_id        = 2401
+    cpu_cores    = 8
+    memory_mb    = 32768
+    disk_gb      = 200
+  }
+}

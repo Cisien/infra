@@ -26,3 +26,19 @@ spec:
       allowedRoutes:
         namespaces:
           from: All
+    - name: palworld-game
+      protocol: UDP
+      port: 8211
+      allowedRoutes:
+        namespaces:
+          from: All
+        kinds:
+          - kind: UDPRoute
+    - name: palworld-query
+      protocol: UDP
+      port: 27015
+      allowedRoutes:
+        namespaces:
+          from: All
+        kinds:
+          - kind: UDPRoute

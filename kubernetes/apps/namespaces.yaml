@@ -85,3 +85,8 @@ apiVersion: v1
 kind: Namespace
 metadata:
   name: external-dns-internal
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: games

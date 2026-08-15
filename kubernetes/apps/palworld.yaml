@@ -1,0 +1,186 @@
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: game-local
+provisioner: kubernetes.io/no-provisioner
+reclaimPolicy: Retain
+volumeBindingMode: WaitForFirstConsumer
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: game-01-data
+spec:
+  capacity:
+    storage: 160Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: game-local
+  volumeMode: Filesystem
+  local:
+    path: /var/mnt/game-data
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values:
+                - homelab-game-01
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: palworld-data
+  namespace: games
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: game-local
+  resources:
+    requests:
+      storage: 160Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: palworld
+  namespace: games
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: palworld
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: palworld
+    spec:
+      terminationGracePeriodSeconds: 120
+      nodeSelector:
+        games.cisien.com/role: palworld
+      tolerations:
+        - key: games.cisien.com/dedicated
+          operator: Equal
+          value: palworld
+          effect: NoSchedule
+      imagePullSecrets:
+        - name: oci-registry-pull
+      securityContext:
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+      initContainers:
+        - name: initialize-data-volume
+          image: busybox:1.37.0
+          securityContext:
+            runAsUser: 0
+            runAsGroup: 0
+            allowPrivilegeEscalation: false
+          command:
+            - sh
+            - -ec
+            - mkdir -p /data/server && chown -R 1000:1000 /data
+          volumeMounts:
+            - name: data
+              mountPath: /data
+      containers:
+        - name: palworld
+          image: registry.cisien.com/games/palworld:2026.08.14-r1
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            runAsUser: 1000
+            runAsGroup: 1000
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+          env:
+            - name: PALWORLD_PORT
+              value: "8211"
+            - name: PALWORLD_QUERY_PORT
+              value: "27015"
+            - name: PALWORLD_PLAYERS
+              value: "16"
+            - name: UPDATE_ON_START
+              value: "false"
+          ports:
+            - name: game
+              containerPort: 8211
+              protocol: UDP
+            - name: query
+              containerPort: 27015
+              protocol: UDP
+          resources:
+            requests:
+              cpu: "4"
+              memory: 16Gi
+            limits:
+              cpu: "8"
+              memory: 28Gi
+          readinessProbe:
+            exec:
+              command:
+                - sh
+                - -ec
+                - case "$(tr '\000' ' ' </proc/1/cmdline)" in *PalServer*) exit 0 ;; *) exit 1 ;; esac
+            periodSeconds: 10
+            failureThreshold: 3
+          volumeMounts:
+            - name: data
+              mountPath: /data
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: palworld-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: palworld
+  namespace: games
+spec:
+  selector:
+    app.kubernetes.io/name: palworld
+  ports:
+    - name: game
+      port: 8211
+      targetPort: game
+      protocol: UDP
+    - name: query
+      port: 27015
+      targetPort: query
+      protocol: UDP
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: UDPRoute
+metadata:
+  name: palworld-game
+  namespace: games
+spec:
+  parentRefs:
+    - name: public
+      namespace: gateway-system
+      sectionName: palworld-game
+  rules:
+    - backendRefs:
+        - name: palworld
+          port: 8211
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: UDPRoute
+metadata:
+  name: palworld-query
+  namespace: games
+spec:
+  parentRefs:
+    - name: public
+      namespace: gateway-system
+      sectionName: palworld-query
+  rules:
+    - backendRefs:
+        - name: palworld
+          port: 27015

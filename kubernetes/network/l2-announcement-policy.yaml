@@ -11,6 +11,8 @@ spec:
         operator: DoesNotExist
       - key: ai.cisien.com/role
         operator: DoesNotExist
+      - key: games.cisien.com/role
+        operator: DoesNotExist
   externalIPs: true
   loadBalancerIPs: true
   interfaces:

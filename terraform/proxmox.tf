@@ -24,12 +24,12 @@ resource "proxmox_virtual_environment_vm" "fixed_node" {
   }
 
   cpu {
-    cores = var.control_plane_resources.cpu_cores
+    cores = each.value.cpu_cores
     type  = "x86-64-v2-AES"
   }
 
   memory {
-    dedicated = var.control_plane_resources.memory_mb
+    dedicated = each.value.memory_mb
   }
 
   scsi_hardware = "virtio-scsi-single"
@@ -41,7 +41,7 @@ resource "proxmox_virtual_environment_vm" "fixed_node" {
     file_format  = "raw"
     iothread     = true
     ssd          = true
-    size         = var.control_plane_resources.disk_gb
+    size         = each.value.disk_gb
   }
 
   initialization {

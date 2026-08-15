@@ -1,8 +1,13 @@
 locals {
-  fixed_nodes = {
-    for name, node in var.control_planes : name => merge(node, { role = "controlplane" })
+  control_plane_nodes = {
+    for name, node in var.control_planes : name => merge(node, var.control_plane_resources, { role = "controlplane" })
   }
 
+  game_nodes = {
+    game-01 = merge(var.game_worker, { role = "worker" })
+  }
+
+  fixed_nodes = merge(local.control_plane_nodes, local.game_nodes)
 
   # Talos images download to the shared file-based Proxmox storage with import
   # content enabled. The VM boot disks remain on each node's zfspool storage.
@@ -28,6 +33,9 @@ locals {
         cni = {
           name = "none"
         }
+      }
+      proxy = {
+        disabled = true
       }
     }
   }
