@@ -30,7 +30,7 @@ For each physical GPU worker:
 3. Confirm the node is Ready, the vendor resource is still advertised, and the matching GPU operator Pods are healthy.
 4. Confirm Prometheus target health and the GPU dashboard metrics after the upgrade.
 
-For elastic workers, update the Karpenter Talos template only after the control plane is healthy. Karpenter replaces drifted workers according to its disruption policy.
+Upgrade general workers sequentially after the control plane is healthy. Confirm workload health after each worker before upgrading the next one.
 
 ## Kubernetes upgrade
 

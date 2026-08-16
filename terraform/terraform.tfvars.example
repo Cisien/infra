@@ -9,7 +9,7 @@ talos_image_url = "https://factory.talos.dev/image/376567988ad370138ad8b26982123
 
 # Temporary non-HA API endpoint. Replace this with a VIP/load balancer before
 # relying on control-plane failover.
-cluster_endpoint = "https://172.16.0.230:6443"
+cluster_endpoint = "https://172.16.200.230:6443"
 
 network = {
   gateway     = "172.16.0.1"
@@ -23,7 +23,14 @@ network = {
 # `import` content. VM disks use the selected per-node zfspool storage.
 # pve-02 and pve-03 use local-storage-pool; pve-04 uses ssd-pool.
 control_planes = {
-  cp-01 = { proxmox_node = "pve-02", storage_pool = "local-storage-pool", ipv4_address = "172.16.0.230", vm_id = 2301 }
-  cp-02 = { proxmox_node = "pve-03", storage_pool = "local-storage-pool", ipv4_address = "172.16.0.231", vm_id = 2302 }
-  cp-03 = { proxmox_node = "pve-04", storage_pool = "ssd-pool", ipv4_address = "172.16.0.232", vm_id = 2303 }
+  cp-04 = { proxmox_node = "pve-02", storage_pool = "local-storage-pool", ipv4_address = "172.16.200.230", vm_id = 2304 }
+  cp-05 = { proxmox_node = "pve-03", storage_pool = "local-storage-pool", ipv4_address = "172.16.200.231", vm_id = 2305 }
+  cp-06 = { proxmox_node = "pve-04", storage_pool = "ssd-pool", ipv4_address = "172.16.200.232", vm_id = 2306 }
+}
+
+control_plane_network = {
+  gateway     = "172.16.200.1"
+  nameservers = ["192.168.1.2"]
+  cidr        = "172.16.200.0/24"
+  bridge      = "workvnet"
 }

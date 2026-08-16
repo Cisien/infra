@@ -164,15 +164,6 @@ releases:
     needs:
       - kube-system/cilium
 
-  - name: karpenter-proxmox
-    namespace: kube-system
-    chart: oci://ghcr.io/sergelogvinov/charts/karpenter-provider-proxmox
-    version: 0.4.9
-    needs:
-      - kube-system/cilium
-    values:
-      - values/karpenter-values.yaml
-
   - name: oci-registry
     namespace: ai
     chart: project-zot/zot

@@ -22,9 +22,9 @@ kubeScheduler:
 # and legacy Endpoints object used by its existing etcd ServiceMonitor.
 kubeEtcd:
   endpoints:
-    - 172.16.0.230
-    - 172.16.0.231
-    - 172.16.0.232
+    - 172.16.200.230
+    - 172.16.200.231
+    - 172.16.200.232
   service:
     selector: {}
 

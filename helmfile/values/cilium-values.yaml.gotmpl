@@ -1,5 +1,5 @@
-# The temporary cluster endpoint is direct/non-HA. It is reachable from every
-# current and Karpenter-created Talos node.
+# Set KUBERNETES_API_HOST to the current Kubernetes API endpoint. It must be
+# reachable from every Talos node.
 k8sServiceHost: {{ requiredEnv "KUBERNETES_API_HOST" | quote }}
 k8sServicePort: 6443
 

@@ -1,6 +1,5 @@
 [allowlist]
 description = "Encrypted SealedSecret payloads are safe to version."
 paths = [
-  '''^kubernetes/apps/secrets/.*\.sealed\.yaml$''',
-  '''^kubernetes/karpenter/.*\.sealed\.yaml$'''
+  '''^kubernetes/apps/secrets/.*\.sealed\.yaml$'''
 ]

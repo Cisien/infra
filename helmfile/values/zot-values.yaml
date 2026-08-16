@@ -75,7 +75,7 @@ strategy:
   type: Recreate
 
 nodeSelector:
-  kubernetes.io/hostname: base-workers-hzj89
+  homelab.cisien.com/role: general-worker
 
 test:
   enabled: false

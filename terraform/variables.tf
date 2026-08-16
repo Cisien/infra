@@ -29,7 +29,7 @@ variable "talos_version" {
 }
 
 variable "kubernetes_version" {
-  description = "Kubernetes version embedded into the initial Talos machine configuration and Karpenter worker template. Use the documented talosctl upgrade-k8s workflow for existing nodes."
+  description = "Kubernetes version embedded into the initial Talos machine configuration. Use the documented talosctl upgrade-k8s workflow for existing nodes."
   type        = string
   default     = "v1.36.3"
 }
@@ -61,6 +61,23 @@ variable "network" {
   })
 }
 
+variable "control_plane_network" {
+  description = "Network data for fixed Talos control-plane VMs. Keep the current LAN values until the staged VLAN control-plane migration is complete."
+  type = object({
+    gateway     = string
+    nameservers = list(string)
+    cidr        = string
+    bridge      = string
+    vlan_id     = optional(number)
+  })
+  default = {
+    gateway     = "172.16.0.1"
+    nameservers = ["192.168.1.2"]
+    cidr        = "172.16.0.0/24"
+    bridge      = "vmbr0"
+  }
+}
+
 variable "control_planes" {
   description = "Exactly three fixed Talos control-plane VMs. Spread these across the usable PVE VM hosts."
   type = map(object({
@@ -74,6 +91,17 @@ variable "control_planes" {
     condition     = length(var.control_planes) == 3
     error_message = "Define exactly three control-plane VMs for etcd quorum."
   }
+}
+
+variable "temporary_control_planes" {
+  description = "Temporary VLAN control-plane replacements. Use only during a staged migration, then move these entries into control_planes and remove the old control planes."
+  type = map(object({
+    proxmox_node = string
+    storage_pool = string
+    ipv4_address = string
+    vm_id        = number
+  }))
+  default = {}
 }
 
 variable "control_plane_resources" {
@@ -109,5 +137,61 @@ variable "game_worker" {
     cpu_cores    = 8
     memory_mb    = 32768
     disk_gb      = 200
+  }
+}
+
+variable "general_workers" {
+  description = "Two fixed Talos workers for ordinary Kubernetes workloads, with one VM on pve-02 and one VM on pve-03."
+  type = map(object({
+    proxmox_node = string
+    storage_pool = string
+    ipv4_address = string
+    vm_id        = number
+    cpu_cores    = number
+    memory_mb    = number
+    disk_gb      = number
+  }))
+
+  default = {
+    worker-01 = {
+      proxmox_node = "pve-02"
+      storage_pool = "local-storage-pool"
+      ipv4_address = "172.16.200.195"
+      vm_id        = 2201
+      cpu_cores    = 4
+      memory_mb    = 8192
+      disk_gb      = 80
+    }
+    worker-02 = {
+      proxmox_node = "pve-03"
+      storage_pool = "local-storage-pool"
+      ipv4_address = "172.16.200.196"
+      vm_id        = 2202
+      cpu_cores    = 4
+      memory_mb    = 8192
+      disk_gb      = 80
+    }
+  }
+
+  validation {
+    condition     = length(var.general_workers) == 2 && toset([for worker in values(var.general_workers) : worker.proxmox_node]) == toset(["pve-02", "pve-03"])
+    error_message = "Define exactly two general workers, one on pve-02 and one on pve-03."
+  }
+}
+
+variable "worker_network" {
+  description = "Network data for fixed general workers on the routed VLAN 2000 worker network."
+  type = object({
+    gateway     = string
+    nameservers = list(string)
+    cidr        = string
+    bridge      = string
+  })
+
+  default = {
+    gateway     = "172.16.200.1"
+    nameservers = ["192.168.1.2"]
+    cidr        = "172.16.200.0/24"
+    bridge      = "workvnet"
   }
 }

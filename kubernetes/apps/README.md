@@ -29,9 +29,9 @@ The target cluster must already contain the CRDs for Grafana Operator, Prometheu
 Public `.com` Gateway names use two DNS views:
 
 - HE public DNS stores CNAMEs to `cable.cisien.com`, which tracks the dynamic public address.
-- AdGuard Home at `192.168.1.2` stores A rewrites to the public Gateway address `172.16.0.240` for LAN clients.
+- AdGuard Home at `192.168.1.2` stores A rewrites to the public Gateway address `172.16.200.254` for LAN clients.
 
-Internal service names are not published in HE DNS. AdGuard stores individual A rewrites for `.local.cisien.com` names to the internal Gateway at `172.16.0.239`. The wildcard certificate does not create a wildcard DNS record.
+Internal service names are not published in HE DNS. AdGuard stores individual A rewrites for `.local.cisien.com` names to the internal Gateway at `172.16.200.253`. The wildcard certificate does not create a wildcard DNS record.
 
 The two ExternalDNS Helm releases use CRD sources only and label filters:
 
@@ -57,7 +57,7 @@ Do not put a plain `Secret`, kubeconfig, API token, or password in this director
 The `ai` namespace has three separate layers:
 
 - `oci-registry` is the internal Zot OCI registry with its web UI. Its data PVC uses `nas-nfs`.
-- `litellm` is the stable OpenAI-compatible text gateway. It maps public model names to internal runtime Services. The LAN-only internal Gateway is available at `http://litellm.local.cisien.com/v1` and `https://litellm.local.cisien.com/v1`; it uses `172.16.0.239`, has no HTTP redirect, and uses a publicly trusted wildcard certificate issued through the HE DNS-01 webhook. It is separate from the public Gateway address `172.16.0.240`.
+- `litellm` is the stable OpenAI-compatible text gateway. It maps public model names to internal runtime Services. The internal Gateway is available at `http://litellm.local.cisien.com/v1` and `https://litellm.local.cisien.com/v1`; it uses `172.16.200.253`, has no HTTP redirect, and uses a publicly trusted wildcard certificate issued through the HE DNS-01 webhook. It is separate from the public Gateway address `172.16.200.254`.
 - `litellm-db` is the retained PostgreSQL backend for LiteLLM UI users, keys, and spend data. LiteLLM requires `DATABASE_URL` for UI authentication; the database credentials and URL are SealedSecrets, and the database uses the retained `proxmox-ceph-rbd` StorageClass.
 - Each runtime is its own Deployment and Service. Runtime flags, images, GPU placement, and model artifacts are explicit in its manifest.
 
@@ -65,7 +65,7 @@ The active aliases are `incompetent-robot`, `robot`, `robot-laguna`, and `gemma-
 
 All GPU runtime Deployments start at zero replicas. This prevents an incomplete model import from starting a Pod. The AMD runtimes use the shared `ai/shared-amd-gpu` Dynamic Resource Allocation claim, so independent AMD Pods can share the same physical GPU. GPU memory and compute contention remain application-level concerns. Set any combination of `amd-qwen`, `amd-laguna`, or `flux-image` to one replica when testing concurrent access. `nvidia-qwopus` can run independently on both NVIDIA GPUs.
 
-The AMD GPU Operator uses its DRA driver instead of the legacy device plugin. The DRA driver is pinned to `rocm/k8s-gpu-dra-driver:v1.0.1`; the `latest` image is not used because it published an invalid empty driver-version attribute on this Talos host. Karpenter cannot provision DRA Pods, so AMD workloads must tolerate the GPU taint and target the existing AMD node.
+The AMD GPU Operator uses its DRA driver instead of the legacy device plugin. The DRA driver is pinned to `rocm/k8s-gpu-dra-driver:v1.0.1`; the `latest` image is not used because it published an invalid empty driver-version attribute on this Talos host. AMD workloads must tolerate the GPU taint and target the existing AMD node.
 
 Use `registry.cisien.com` for OCI clients. It is separate from `ai.cisien.com`, which belongs to Open WebUI. The registry requires the `registry` account stored in the `oci-registry-client` Secret. Do not copy that Secret into source control.
 

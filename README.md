@@ -6,15 +6,14 @@ It is infrastructure source code, not a turnkey installer. It assumes that the o
 
 ## What this repository manages
 
-- Fixed Talos control-plane nodes and Proxmox base infrastructure through OpenTofu.
-- Elastic Talos workers through Karpenter Provider for Proxmox.
+- Fixed Talos control-plane and general worker nodes through OpenTofu.
 - Dedicated physical NVIDIA and AMD Talos GPU workers.
 - Cilium networking and Gateway API ingress.
 - NFS CSI and Ceph RBD storage integration.
 - Platform Helm releases, monitoring, Grafana, and cert-manager.
 - Kubernetes applications, dashboards, external-service routes, and SealedSecret manifests.
 
-The cluster currently has three control-plane nodes, elastic workers, and two dedicated GPU workers. Kubernetes advertises two NVIDIA GPUs and one AMD GPU through the vendor operators.
+The cluster currently has three control-plane nodes, two general workers, and two dedicated GPU workers. Kubernetes advertises two NVIDIA GPUs and one AMD GPU through the vendor operators.
 
 ## Repository layout
 
@@ -23,7 +22,6 @@ The cluster currently has three control-plane nodes, elastic workers, and two de
 | `terraform/` | Proxmox, Talos bootstrap, and physical GPU-worker definitions. |
 | `helmfile/` | Version-pinned platform Helm releases and values. |
 | `kubernetes/apps/` | Application manifests, observability resources, dashboards, and SealedSecrets. |
-| `kubernetes/karpenter/` | Karpenter Provider for Proxmox templates and worker policy. |
 | `kubernetes/network/` | Cilium LoadBalancer and L2 announcement resources. |
 | `kubernetes/gateway/` | Gateway API and certificate resources. |
 | `kubernetes/storage/` | StorageClass resources and examples. |
@@ -34,7 +32,6 @@ The cluster currently has three control-plane nodes, elastic workers, and two de
 - `UPGRADES.md`: Talos, Kubernetes, worker, and GPU-worker upgrade procedure.
 - `helmfile/README.md`: platform release and observability notes.
 - `kubernetes/apps/README.md`: current application and dashboard inventory.
-- `kubernetes/karpenter/README.md`: elastic-worker configuration notes.
 - `kubernetes/apps/secrets/README.md`: SealedSecret policy.
 
 ## Secrets and local state

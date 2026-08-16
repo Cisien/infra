@@ -1,6 +1,6 @@
 # Platform Helm releases
 
-`helmfile.yaml` pins the cluster platform releases. It manages Cilium, NFS CSI, Ceph RBD CSI, Metrics Server, the monitoring stack, Grafana Operator, SNMP exporter, cert-manager, Sealed Secrets, Karpenter Provider for Proxmox, and both GPU operators.
+`helmfile.yaml` pins the cluster platform releases. It manages Cilium, NFS CSI, Ceph RBD CSI, Metrics Server, the monitoring stack, Grafana Operator, SNMP exporter, cert-manager, Sealed Secrets, and both GPU operators.
 
 ## Use
 

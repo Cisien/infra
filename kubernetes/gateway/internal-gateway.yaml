@@ -1,4 +1,4 @@
-# LAN-only Gateway. The public Gateway remains on 172.16.0.240.
+# VLAN 2000 internal Gateway. The public Gateway uses 172.16.200.254.
 # This listener intentionally has no HTTPS listener until an internal CA is available.
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway

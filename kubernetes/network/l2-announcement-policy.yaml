@@ -3,11 +3,14 @@ kind: CiliumL2AnnouncementPolicy
 metadata:
   name: lan-loadbalancers
 spec:
-  # VLAN 2000 workers and dedicated AI workers must not announce the
-  # 172.16.0.0/24 LAN Gateway IP.
+  # Only VLAN 2000 control-plane VMs announce the VLAN 2000 Gateway IPs.
   nodeSelector:
     matchExpressions:
-      - key: karpenter.sh/nodepool
+      - key: homelab.cisien.com/network
+        operator: In
+        values:
+          - vlan-2000
+      - key: homelab.cisien.com/role
         operator: DoesNotExist
       - key: ai.cisien.com/role
         operator: DoesNotExist

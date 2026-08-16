@@ -18,34 +18,51 @@ data "talos_machine_configuration" "fixed_node" {
       yamlencode({
         machine = {
           network = {
+            nameservers = each.value.network.nameservers
             interfaces = [{
               interface = "eth0"
-              addresses = ["${each.value.ipv4_address}/${split("/", var.network.cidr)[1]}"]
+              addresses = ["${each.value.ipv4_address}/${split("/", each.value.network.cidr)[1]}"]
               routes = [{
                 network = "0.0.0.0/0"
-                gateway = var.network.gateway
+                gateway = each.value.network.gateway
               }]
             }]
           }
         }
       }),
     ],
-    each.value.role == "controlplane" ? [
-      yamlencode({
-        cluster = {
-          etcd = {
-            extraArgs = {
-              listen-metrics-urls = "http://0.0.0.0:2381"
+    each.value.role == "controlplane" ? concat(
+      [
+        yamlencode({
+          cluster = {
+            etcd = {
+              extraArgs = {
+                listen-metrics-urls = "http://0.0.0.0:2381"
+              }
             }
           }
-        }
-      }),
-      yamlencode({
-        cluster = {
-          allowSchedulingOnControlPlanes = false
-        }
-      }),
-      ] : [
+        }),
+        yamlencode({
+          cluster = {
+            allowSchedulingOnControlPlanes = false
+          }
+        }),
+      ],
+      each.value.network.cidr == var.worker_network.cidr ? [
+        yamlencode({
+          machine = {
+            nodeLabels = {
+              "homelab.cisien.com/network" = "vlan-2000"
+            }
+          }
+          cluster = {
+            etcd = {
+              advertisedSubnets = [each.value.network.cidr]
+            }
+          }
+        }),
+      ] : [],
+      ) : contains(keys(local.game_nodes), each.key) ? [
       yamlencode({
         machine = {
           nodeLabels = {
@@ -64,39 +81,67 @@ data "talos_machine_configuration" "fixed_node" {
         name       = "game-data"
         volumeType = "directory"
       }),
+      ] : [
+      yamlencode({
+        machine = {
+          nodeLabels = {
+            "homelab.cisien.com/role"   = "general-worker"
+            "node.kubernetes.io/worker" = ""
+          }
+        }
+      }),
     ],
   )
 }
 
 resource "talos_machine_configuration_apply" "control_plane" {
-  for_each = var.control_planes
+  for_each = {
+    for name, node in proxmox_virtual_environment_vm.fixed_node : name => node
+    if contains(keys(local.control_plane_nodes), name)
+  }
 
-  node                        = each.value.ipv4_address
+  node                        = local.control_plane_nodes[each.key].ipv4_address
   client_configuration        = talos_machine_secrets.this.client_configuration
   machine_configuration_input = data.talos_machine_configuration.fixed_node[each.key].machine_configuration
   apply_mode                  = "auto"
-
-  depends_on = [proxmox_virtual_environment_vm.fixed_node]
 }
 
 resource "talos_machine_configuration_apply" "game_worker" {
-  for_each = local.game_nodes
+  for_each = {
+    for name, node in proxmox_virtual_environment_vm.fixed_node : name => node
+    if contains(keys(local.game_nodes), name)
+  }
 
-  node                        = each.value.ipv4_address
+  node                        = local.game_nodes[each.key].ipv4_address
   client_configuration        = talos_machine_secrets.this.client_configuration
   machine_configuration_input = data.talos_machine_configuration.fixed_node[each.key].machine_configuration
   apply_mode                  = "auto"
 
-  depends_on = [
-    proxmox_virtual_environment_vm.fixed_node,
-    talos_machine_bootstrap.this,
-  ]
+  depends_on = [talos_machine_bootstrap.this]
+}
+
+resource "talos_machine_configuration_apply" "general_worker" {
+  for_each = {
+    for name, node in proxmox_virtual_environment_vm.fixed_node : name => node
+    if contains(keys(local.general_worker_nodes), name)
+  }
+
+  node                        = local.general_worker_nodes[each.key].ipv4_address
+  client_configuration        = talos_machine_secrets.this.client_configuration
+  machine_configuration_input = data.talos_machine_configuration.fixed_node[each.key].machine_configuration
+  apply_mode                  = "auto"
+
+  depends_on = [talos_machine_bootstrap.this]
 }
 
 resource "talos_machine_bootstrap" "this" {
   node                 = var.control_planes[local.bootstrap_node].ipv4_address
   endpoint             = var.control_planes[local.bootstrap_node].ipv4_address
   client_configuration = talos_machine_secrets.this.client_configuration
+
+  lifecycle {
+    ignore_changes = [node, endpoint]
+  }
 
   depends_on = [talos_machine_configuration_apply.control_plane]
 }
@@ -109,43 +154,15 @@ resource "talos_cluster_kubeconfig" "this" {
   depends_on = [talos_machine_bootstrap.this]
 }
 
-locals {
-  karpenter_talos_values = yamlencode({
-    apiVersion = "v1"
-    kind       = "Secret"
-    metadata = {
-      name      = "karpenter-talos-values"
-      namespace = "kube-system"
-    }
-    type = "Opaque"
-    stringData = {
-      machineCA       = talos_machine_secrets.this.machine_secrets.certs.os.cert
-      machineToken    = talos_machine_secrets.this.machine_secrets.trustdinfo.token
-      clusterID       = talos_machine_secrets.this.machine_secrets.cluster.id
-      clusterSecret   = talos_machine_secrets.this.machine_secrets.cluster.secret
-      clusterEndpoint = var.cluster_endpoint
-      clusterName     = var.cluster_name
-      kubeletVersion  = var.kubernetes_version
-      talosVersion    = var.talos_version
-    }
-  })
-}
-
 output "kubeconfig" {
   description = "Kubeconfig for the new Talos cluster. Keep this secret."
-  value       = talos_cluster_kubeconfig.this.kubeconfig_raw
+  value       = replace(talos_cluster_kubeconfig.this.kubeconfig_raw, "/server: https:\\/\\/[^[:space:]]+:6443/", "server: ${var.cluster_endpoint}")
   sensitive   = true
 }
 
 output "talosconfig" {
   description = "Talos client configuration for the new cluster. Keep this secret."
   value       = data.talos_client_configuration.this.talos_config
-  sensitive   = true
-}
-
-output "karpenter_talos_values" {
-  description = "Write this sensitive output to kubernetes/karpenter/talos-values.secret.yaml after the initial Talos apply."
-  value       = local.karpenter_talos_values
   sensitive   = true
 }
 

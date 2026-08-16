@@ -49,20 +49,20 @@ resource "proxmox_virtual_environment_vm" "fixed_node" {
 
     ip_config {
       ipv4 {
-        address = "${each.value.ipv4_address}/${split("/", var.network.cidr)[1]}"
-        gateway = var.network.gateway
+        address = "${each.value.ipv4_address}/${split("/", each.value.network.cidr)[1]}"
+        gateway = each.value.network.gateway
       }
     }
 
     dns {
-      servers = var.network.nameservers
+      servers = each.value.network.nameservers
     }
   }
 
   network_device {
-    bridge  = var.network.bridge
+    bridge  = each.value.network.bridge
     model   = "virtio"
-    vlan_id = try(var.network.vlan_id, null)
+    vlan_id = try(each.value.network.vlan_id, null)
   }
 
   operating_system {
