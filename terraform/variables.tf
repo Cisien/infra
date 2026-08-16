@@ -140,6 +140,24 @@ variable "game_worker" {
   }
 }
 
+variable "game_worker_network" {
+  description = "Network data for the fixed Palworld worker."
+  type = object({
+    gateway     = string
+    nameservers = list(string)
+    cidr        = string
+    bridge      = string
+    vlan_id     = optional(number)
+  })
+
+  default = {
+    gateway     = "172.16.200.1"
+    nameservers = ["192.168.1.2"]
+    cidr        = "172.16.200.0/24"
+    bridge      = "workvnet"
+  }
+}
+
 variable "general_workers" {
   description = "Two fixed Talos workers for ordinary Kubernetes workloads, with one VM on pve-02 and one VM on pve-03."
   type = map(object({

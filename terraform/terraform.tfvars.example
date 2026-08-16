@@ -34,3 +34,13 @@ control_plane_network = {
   cidr        = "172.16.200.0/24"
   bridge      = "workvnet"
 }
+
+game_worker = {
+  proxmox_node = "pve-04"
+  storage_pool = "ssd-pool"
+  ipv4_address = "172.16.200.233"
+  vm_id        = 2401
+  cpu_cores    = 8
+  memory_mb    = 32768
+  disk_gb      = 200
+}

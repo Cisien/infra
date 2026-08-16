@@ -9,7 +9,7 @@ locals {
   )
 
   game_nodes = {
-    game-01 = merge(var.game_worker, { role = "worker", network = var.network })
+    game-01 = merge(var.game_worker, { role = "worker", network = var.game_worker_network })
   }
 
   general_worker_nodes = {
