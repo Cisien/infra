@@ -35,14 +35,8 @@ variable "kubernetes_version" {
 }
 
 variable "talos_image_url" {
-  description = "Talos nocloud amd64 raw image URL from Talos Image Factory. Use the Factory raw.xz URL form shown in terraform.tfvars.example; it must match talos_version."
+  description = "Talos nocloud amd64 raw image URL used to create fixed Proxmox VM disks. It must match talos_version. Fixed nodes install the generated QEMU guest-agent schematic after their first boot."
   type        = string
-}
-
-variable "talos_installer_image" {
-  description = "Talos installer image used for the initial install and later in-place OS upgrades."
-  type        = string
-  default     = "ghcr.io/siderolabs/installer:v1.13.8"
 }
 
 variable "cluster_endpoint" {

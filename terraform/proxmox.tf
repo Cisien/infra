@@ -20,7 +20,11 @@ resource "proxmox_virtual_environment_vm" "fixed_node" {
   on_boot     = true
 
   agent {
-    enabled = false
+    enabled = true
+
+    wait_for_ip {
+      disabled = true
+    }
   }
 
   cpu {

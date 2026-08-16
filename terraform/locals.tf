@@ -27,11 +27,13 @@ locals {
   control_plane_ips = [for node in values(local.control_plane_nodes) : node.ipv4_address]
   bootstrap_node    = sort(keys(var.control_planes))[0]
 
+  proxmox_talos_installer_image = "factory.talos.dev/installer/${talos_image_factory_schematic.proxmox_qemu_guest_agent.id}:${var.talos_version}"
+
   talos_network_patch = {
     machine = {
       install = {
         disk  = "/dev/sda"
-        image = var.talos_installer_image
+        image = local.proxmox_talos_installer_image
       }
 
     }
