@@ -4,6 +4,7 @@ metadata:
   name: lan-loadbalancers
 spec:
   # Only VLAN 2000 control-plane VMs announce the VLAN 2000 Gateway IPs.
+  # Talos custom installer images use ens18; retain eth0 for generic images.
   nodeSelector:
     matchExpressions:
       - key: homelab.cisien.com/network
@@ -19,4 +20,4 @@ spec:
   externalIPs: true
   loadBalancerIPs: true
   interfaces:
-    - ^eth0
+    - ^(ens18|eth0)$
