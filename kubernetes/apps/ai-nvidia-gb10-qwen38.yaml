@@ -19,6 +19,7 @@ metadata:
   namespace: ai
 spec:
   replicas: 1
+  progressDeadlineSeconds: 3600
   strategy:
     type: RollingUpdate
     rollingUpdate:
