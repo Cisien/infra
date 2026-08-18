@@ -108,7 +108,7 @@ metadata:
   name: nvidia-gb10-qwen38
   namespace: ai
   labels:
-    metrics: llama-cpp
+    metrics: vllm
 spec:
   selector:
     app.kubernetes.io/name: nvidia-gb10-qwen38

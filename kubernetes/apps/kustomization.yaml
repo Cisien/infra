@@ -45,4 +45,5 @@ resources:
   - amd-gpu-resource-claim.yaml
   - gpu-dashboard.yaml
   - llama-metrics-dashboard.yaml
+  - vllm-metrics-dashboard.yaml
   - palworld.yaml
