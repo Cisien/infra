@@ -41,66 +41,31 @@ spec:
           value: "true"
           effect: NoSchedule
       containers:
-        - name: llama-server
-          image: ghcr.io/ggml-org/llama.cpp:server-cuda
+        - name: vllm
+          image: vllm/vllm-openai:v0.27.1
           args:
+            - unsloth/Qwen3.8-27B-NVFP4
+            - --served-model-name
+            - competent-robot
             - --host
             - 0.0.0.0
             - --port
             - "8080"
-            - -hf
-            - unsloth/Qwen3.8-27B-GGUF:UD-Q8_K_XL
-            - --alias
-            - competent-robot
-            - --n-gpu-layers
-            - "999"
-            - --parallel
+            - --max-model-len
+            - "262144"
+            - --max-num-seqs
             - "4"
-            - --ctx-size
-            - "1048576"
-            - --jinja
-            - --image-min-tokens
-            - "1024"
-            - --fit
-            - "off"
-            - --no-mmap
-            - --temp
-            - "1.0"
-            - --min-p
-            - "0.0"
-            - --top-p
-            - "0.95"
-            - --top-k
-            - "20"
-            - --repeat-penalty
-            - "1.0"
-            - --presence-penalty
-            - "0.0"
-            - --reasoning
-            - "on"
-            - --reasoning-preserve
-            - --reasoning-format
-            - deepseek
-            - --chat-template-kwargs
-            - '{"preserve_thinking":true}'
-            - --threads
-            - "16"
-            - --flash-attn
-            - "on"
-            - --cache-type-k
-            - q8_0
-            - --cache-type-v
-            - q8_0
-            - --cache-ram
-            - "32768"
-            - --spec-type
-            - draft-mtp
-            - --spec-draft-n-max
-            - "2"
-            - --metrics
+            - --gpu-memory-utilization
+            - "0.90"
+            - --enable-auto-tool-choice
+            - --tool-call-parser
+            - qwen3_xml
+            - --enable-prefix-caching
           env:
-            - name: LLAMA_CACHE
-              value: /models
+            - name: HF_HOME
+              value: /models/huggingface
+            - name: VLLM_CACHE_ROOT
+              value: /models/vllm
           ports:
             - name: http
               containerPort: 8080
