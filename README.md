@@ -13,7 +13,7 @@ It is infrastructure source code, not a turnkey installer. It assumes that the o
 - Platform Helm releases, monitoring, Grafana, and cert-manager.
 - Kubernetes applications, dashboards, external-service routes, and SealedSecret manifests.
 
-The cluster currently has three control-plane nodes, two general workers, and two dedicated GPU workers. Kubernetes advertises two NVIDIA GPUs and one AMD GPU through the vendor operators.
+The cluster currently has three control-plane nodes, two general workers, and three dedicated GPU workers. The NVIDIA GB10 advertises two time-sliced shared GPU resources; the vendor operators advertise the remaining NVIDIA and AMD resources.
 
 ## Repository layout
 

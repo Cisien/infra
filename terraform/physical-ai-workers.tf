@@ -4,6 +4,7 @@ variable "physical_ai_workers" {
     ipv4_address = string
     mac_address  = string
     gpu_vendor   = string
+    accelerator  = string
     install_disk = string
   }))
 
@@ -12,12 +13,21 @@ variable "physical_ai_workers" {
       ipv4_address = "172.16.200.105"
       mac_address  = "3c:7c:3f:21:8d:37"
       gpu_vendor   = "nvidia"
+      accelerator  = "rtx-3090"
       install_disk = "/dev/nvme0n1"
     }
     ai-amd-01 = {
       ipv4_address = "172.16.200.106"
       mac_address  = "38:05:25:36:87:02"
       gpu_vendor   = "amd"
+      accelerator  = "radeon-8060s"
+      install_disk = "/dev/nvme0n1"
+    }
+    ai-nvidia-02 = {
+      ipv4_address = "172.16.200.107"
+      mac_address  = "30:c5:99:40:2c:8c"
+      gpu_vendor   = "nvidia"
+      accelerator  = "gb10"
       install_disk = "/dev/nvme0n1"
     }
   }
@@ -75,6 +85,8 @@ resource "talos_image_factory_schematic" "physical_ai_worker" {
           "amd_iommu=on",
           "iommu=pt",
         ]
+        } : each.value.accelerator == "gb10" ? {
+        extraKernelArgs = ["arm64.nobti"]
       } : {},
     )
   })
@@ -112,12 +124,18 @@ data "talos_machine_configuration" "physical_ai_worker" {
               }]
             }]
           }
-          nodeLabels = {
-            "ai.cisien.com/role"        = "gpu"
-            "ai.cisien.com/vendor"      = each.value.gpu_vendor
-            "ai.cisien.com/node"        = each.key
-            "node.kubernetes.io/worker" = ""
-          }
+          nodeLabels = merge(
+            {
+              "ai.cisien.com/role"        = "gpu"
+              "ai.cisien.com/vendor"      = each.value.gpu_vendor
+              "ai.cisien.com/node"        = each.key
+              "node.kubernetes.io/worker" = ""
+            },
+            each.value.accelerator == "gb10" ? {
+              "ai.cisien.com/accelerator"       = each.value.accelerator
+              "nvidia.com/device-plugin.config" = "gb10-time-slicing"
+            } : {},
+          )
           kubelet = {
             extraArgs = {
               "register-with-taints" = "${local.physical_ai_taint}=true:NoSchedule"

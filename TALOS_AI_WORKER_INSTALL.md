@@ -1,6 +1,6 @@
 # Physical Talos GPU worker installation and recovery
 
-The two GPU workers are installed and registered in the cluster. Use this document only to replace, recover, or reinstall a physical GPU worker.
+The physical GPU workers are installed and registered in the cluster. Use this document only to replace, recover, or reinstall a physical GPU worker.
 
 The OpenTofu configuration owns Talos machine configuration, vendor Image Factory schematics, Kubernetes labels and taints, local storage definitions, GPU operators, and validation. The physical operator owns only console and network-gear actions.
 
@@ -10,6 +10,7 @@ The OpenTofu configuration owns Talos machine configuration, vendor Image Factor
 | --- | --- | --- | --- |
 | `ai-nvidia-01` | `172.16.200.105` | `3c:7c:3f:21:8d:37` | Two RTX 3090 GPUs |
 | `ai-amd-01` | `172.16.200.106` | `38:05:25:36:87:02` | Radeon 8060S (`gfx1151`) |
+| `ai-nvidia-02` | `172.16.200.107` | `30:c5:99:40:2c:8c` | NVIDIA GB10 Grace Blackwell |
 
 The target network is VLAN 2000. Each host installs Talos on its NVMe disk. Reinstallation erases the existing host operating system and node-local model data.
 
@@ -44,6 +45,7 @@ Before returning the worker to service, confirm all checks below:
 - The `ai-data` local volume is mounted.
 - The matching vendor kernel driver is loaded.
 - Kubernetes advertises the expected vendor GPU resource.
+- `ai-nvidia-02` advertises two `nvidia.com/gpu.shared` time-sliced resources.
 - The matching device plugin and metrics exporter are Ready on the worker.
 - Prometheus and the `GPU Workers` dashboard show the matching exporter target as healthy.
 
