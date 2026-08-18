@@ -51,3 +51,26 @@ spec:
               operator: In
               values:
                 - ai-amd-01
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: ai-nvidia-02-data
+spec:
+  capacity:
+    storage: 800Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: ai-local
+  volumeMode: Filesystem
+  local:
+    path: /var/mnt/ai-data
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values:
+                - ai-nvidia-02

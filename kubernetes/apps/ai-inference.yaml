@@ -40,6 +40,12 @@ data:
           api_base: http://nvidia-qwen38.ai.svc.cluster.local:8080/v1
           api_key: none
 
+      - model_name: competent-robot
+        litellm_params:
+          model: openai/competent-robot
+          api_base: http://nvidia-gb10-qwen38.ai.svc.cluster.local:8080/v1
+          api_key: none
+
       - model_name: robot
         litellm_params:
           model: openai/robot
@@ -72,7 +78,7 @@ spec:
   template:
     metadata:
       annotations:
-        config.cisien.com/litellm-config: "aliased-models-only-v4"
+        config.cisien.com/litellm-config: "aliased-models-only-v5-gb10"
       labels:
         app.kubernetes.io/name: litellm
     spec:

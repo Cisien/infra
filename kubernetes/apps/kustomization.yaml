@@ -31,6 +31,7 @@ resources:
   - ai-registry-route.yaml
   - ai-database.yaml
   - ai-inference.yaml
+  - ai-nvidia-gb10-qwen38.yaml
   - ai-qwen-unsloth.yaml
   - ai-qwen38-unsloth.yaml
   - ai-gemma.yaml

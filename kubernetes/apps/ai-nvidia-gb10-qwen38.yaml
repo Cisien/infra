@@ -1,0 +1,152 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: nvidia-gb10-model-cache
+  namespace: ai
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: ai-local
+  volumeName: ai-nvidia-02-data
+  resources:
+    requests:
+      storage: 800Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nvidia-gb10-qwen38
+  namespace: ai
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: nvidia-gb10-qwen38
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: nvidia-gb10-qwen38
+    spec:
+      nodeSelector:
+        ai.cisien.com/accelerator: gb10
+      tolerations:
+        - key: ai.cisien.com/gpu
+          operator: Equal
+          value: "true"
+          effect: NoSchedule
+      containers:
+        - name: llama-server
+          image: ghcr.io/ggml-org/llama.cpp:server-cuda
+          args:
+            - --host
+            - 0.0.0.0
+            - --port
+            - "8080"
+            - -hf
+            - unsloth/Qwen3.8-27B-GGUF:UD-Q8_K_XL
+            - --alias
+            - competent-robot
+            - --n-gpu-layers
+            - "999"
+            - --parallel
+            - "4"
+            - --ctx-size
+            - "1048576"
+            - --jinja
+            - --image-min-tokens
+            - "1024"
+            - --fit
+            - "off"
+            - --no-mmap
+            - --temp
+            - "1.0"
+            - --min-p
+            - "0.0"
+            - --top-p
+            - "0.95"
+            - --top-k
+            - "20"
+            - --repeat-penalty
+            - "1.0"
+            - --presence-penalty
+            - "0.0"
+            - --reasoning
+            - "on"
+            - --reasoning-preserve
+            - --reasoning-format
+            - deepseek
+            - --chat-template-kwargs
+            - '{"preserve_thinking":true}'
+            - --threads
+            - "16"
+            - --flash-attn
+            - "on"
+            - --cache-type-k
+            - q8_0
+            - --cache-type-v
+            - q8_0
+            - --cache-ram
+            - "32768"
+            - --spec-type
+            - draft-mtp
+            - --spec-draft-n-max
+            - "2"
+            - --metrics
+          env:
+            - name: LLAMA_CACHE
+              value: /models
+          ports:
+            - name: http
+              containerPort: 8080
+          resources:
+            requests:
+              cpu: "16"
+              memory: 96Gi
+              nvidia.com/gpu.shared: 1
+            limits:
+              cpu: "16"
+              memory: 96Gi
+              nvidia.com/gpu.shared: 1
+          startupProbe:
+            httpGet:
+              path: /health
+              port: http
+            failureThreshold: 180
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 20
+          volumeMounts:
+            - name: models
+              mountPath: /models
+      volumes:
+        - name: models
+          persistentVolumeClaim:
+            claimName: nvidia-gb10-model-cache
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nvidia-gb10-qwen38
+  namespace: ai
+  labels:
+    metrics: llama-cpp
+spec:
+  selector:
+    app.kubernetes.io/name: nvidia-gb10-qwen38
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
