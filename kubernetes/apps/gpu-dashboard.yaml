@@ -53,8 +53,8 @@ spec:
           "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4},
           "id": 3,
           "options": {"legend": {"calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
-          "targets": [{"expr": "DCGM_FI_DEV_GPU_UTIL{Hostname=\"ai-nvidia-01\"}", "legendFormat": "GPU {{gpu}}", "refId": "A"}],
-          "title": "NVIDIA GPU utilization",
+          "targets": [{"expr": "DCGM_FI_DEV_GPU_UTIL{Hostname=~\"ai-nvidia-01|ai-nvidia-02\"}", "legendFormat": "{{Hostname}} GPU {{gpu}}", "refId": "A"}, {"expr": "DCGM_FI_DEV_MEM_COPY_UTIL{Hostname=\"ai-nvidia-02\"}", "legendFormat": "ai-nvidia-02 memory copy GPU {{gpu}}", "refId": "B"}],
+          "title": "NVIDIA GPU and GB10 memory-copy utilization",
           "type": "timeseries"
         },
         {
@@ -63,8 +63,8 @@ spec:
           "id": 4,
           "gridPos": {"h": 8, "w": 12, "x": 0, "y": 12},
           "options": {"legend": {"calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
-          "targets": [{"expr": "DCGM_FI_DEV_FB_USED{Hostname=\"ai-nvidia-01\"}", "legendFormat": "GPU {{gpu}} used", "refId": "A"}],
-          "title": "NVIDIA framebuffer used",
+          "targets": [{"expr": "DCGM_FI_DEV_FB_USED{Hostname=~\"ai-nvidia-01|ai-nvidia-02\"}", "legendFormat": "{{Hostname}} GPU {{gpu}} used", "refId": "A"}],
+          "title": "NVIDIA framebuffer used (discrete GPUs)",
           "type": "timeseries"
         },
         {
@@ -73,7 +73,7 @@ spec:
           "id": 5,
           "gridPos": {"h": 8, "w": 12, "x": 0, "y": 20},
           "options": {"legend": {"calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
-          "targets": [{"expr": "DCGM_FI_DEV_GPU_TEMP{Hostname=\"ai-nvidia-01\"}", "legendFormat": "Temperature", "refId": "A"}, {"expr": "DCGM_FI_DEV_POWER_USAGE{Hostname=\"ai-nvidia-01\"}", "legendFormat": "Power", "refId": "B"}],
+          "targets": [{"expr": "DCGM_FI_DEV_GPU_TEMP{Hostname=~\"ai-nvidia-01|ai-nvidia-02\"}", "legendFormat": "Temperature {{Hostname}} GPU {{gpu}}", "refId": "A"}, {"expr": "DCGM_FI_DEV_POWER_USAGE{Hostname=~\"ai-nvidia-01|ai-nvidia-02\"}", "legendFormat": "Power {{Hostname}} GPU {{gpu}}", "refId": "B"}],
           "title": "NVIDIA temperature and power",
           "type": "timeseries"
         },
