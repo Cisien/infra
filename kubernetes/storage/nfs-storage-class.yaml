@@ -20,4 +20,4 @@ mountOptions:
   - proto=tcp
   - port=2049
   - mountproto=tcp
-  - mountport=50491
+  - mountport=59631
