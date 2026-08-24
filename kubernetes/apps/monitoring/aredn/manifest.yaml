@@ -22,7 +22,7 @@ metadata:
     app.kubernetes.io/name: aredn-metrics
 subsets:
   - addresses:
-      - ip: 192.168.1.31
+      - ip: 10.178.191.209
     ports:
       - name: metrics
         port: 80
@@ -43,7 +43,7 @@ ports:
     port: 80
 endpoints:
   - addresses:
-      - 192.168.1.31
+      - 10.178.191.209
     conditions:
       ready: true
 ---
@@ -91,7 +91,7 @@ spec:
   json: |
     {
       "annotations": {"list": []},
-      "description": "An amateur radio WiFi mesh service. Metrics are scraped from the AREDN node at 192.168.1.31.",
+      "description": "An amateur radio WiFi mesh service. Metrics are scraped from the AREDN node at 10.178.191.209.",
       "editable": true,
       "fiscalYearStartMonth": 0,
       "graphTooltip": 0,

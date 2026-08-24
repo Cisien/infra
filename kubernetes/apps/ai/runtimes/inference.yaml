@@ -62,6 +62,8 @@ data:
       drop_params: true
     general_settings:
       master_key: os.environ/LITELLM_MASTER_KEY
+      store_model_in_db: true
+      store_prompts_in_spend_logs: true
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -78,7 +80,7 @@ spec:
   template:
     metadata:
       annotations:
-        config.cisien.com/litellm-config: "aliased-models-only-v5-gb10"
+        config.cisien.com/litellm-config: "aliased-models-only-v6-gb10"
       labels:
         app.kubernetes.io/name: litellm
     spec:

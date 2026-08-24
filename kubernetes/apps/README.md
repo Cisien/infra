@@ -2,6 +2,15 @@
 
 This directory is a Kustomize root for workloads, observability resources, application routes, local GPU storage, and encrypted SealedSecrets.
 
+## Layout
+
+Active manifests are grouped first by Kubernetes namespace and then by application.
+For example, the GB10 Qwen3.8 runtime is in `ai/nvidia-gb10-qwen38/`, Grafana
+resources are in `monitoring/grafana/`, and application-specific SealedSecrets
+are stored beside their workload namespace. Cluster-scoped resources are in
+`cluster/`. `archive/` contains manifests that are intentionally not included
+by `kustomization.yaml`.
+
 ## Included resources
 
 | Area | Main resources |

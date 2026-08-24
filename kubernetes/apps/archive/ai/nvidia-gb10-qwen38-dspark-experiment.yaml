@@ -1,37 +1,20 @@
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: nvidia-gb10-model-cache
-  namespace: ai
-spec:
-  accessModes:
-    - ReadWriteOnce
-  storageClassName: ai-local
-  volumeName: ai-nvidia-02-data
-  resources:
-    requests:
-      storage: 800Gi
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: nvidia-gb10-qwen38
+  name: nvidia-gb10-qwen38-dspark
   namespace: ai
 spec:
   replicas: 1
   progressDeadlineSeconds: 3600
   strategy:
-    type: RollingUpdate
-    rollingUpdate:
-      maxSurge: 0
-      maxUnavailable: 1
+    type: Recreate
   selector:
     matchLabels:
-      app.kubernetes.io/name: nvidia-gb10-qwen38
+      app.kubernetes.io/name: nvidia-gb10-qwen38-dspark
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: nvidia-gb10-qwen38
+        app.kubernetes.io/name: nvidia-gb10-qwen38-dspark
     spec:
       nodeSelector:
         ai.cisien.com/accelerator: gb10
@@ -42,11 +25,13 @@ spec:
           effect: NoSchedule
       containers:
         - name: vllm
-          image: vllm/vllm-openai:v0.27.1
+          image: eugr/spark-vllm:latest
           args:
-            - unsloth/Qwen3.8-27B-NVFP4
+            - vllm
+            - serve
+            - RadixArk/Qwen3.8-27B-NVFP4
             - --served-model-name
-            - competent-robot
+            - competent-robot-dspark
             - --host
             - 0.0.0.0
             - --port
@@ -57,10 +42,15 @@ spec:
             - "4"
             - --gpu-memory-utilization
             - "0.90"
-            - --enable-auto-tool-choice
+            - --trust-remote-code
+            - --enable-prefix-caching
+            - --speculative-config
+            - '{"method":"dspark","model":"RadixArk/Qwen3.8-27B-DSpark","num_speculative_tokens":7}'
+            - --reasoning-parser
+            - qwen3
             - --tool-call-parser
             - qwen3_xml
-            - --enable-prefix-caching
+            - --enable-auto-tool-choice
           env:
             - name: HF_HOME
               value: /models/huggingface
@@ -82,7 +72,7 @@ spec:
             httpGet:
               path: /health
               port: http
-            failureThreshold: 180
+            failureThreshold: 360
             periodSeconds: 10
           readinessProbe:
             httpGet:
@@ -105,13 +95,13 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: nvidia-gb10-qwen38
+  name: nvidia-gb10-qwen38-dspark
   namespace: ai
   labels:
     metrics: vllm
 spec:
   selector:
-    app.kubernetes.io/name: nvidia-gb10-qwen38
+    app.kubernetes.io/name: nvidia-gb10-qwen38-dspark
   ports:
     - name: http
       port: 8080
