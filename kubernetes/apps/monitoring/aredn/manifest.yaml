@@ -248,6 +248,63 @@ spec:
           "title": "AREDN Node Information",
           "transformations": [{"id": "labelsToFields", "options": {}}],
           "type": "table"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"drawStyle": "line", "lineInterpolation": "smooth", "lineWidth": 2, "fillOpacity": 10, "showPoints": "never", "spanNulls": true}, "unit": "dB"}, "overrides": []},
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 38},
+          "id": 14,
+          "options": {"legend": {"calcs": ["lastNotNull", "min", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
+          "targets": [
+            {"expr": "node_lqm_tracker_snr{job=\"aredn-metrics\",instance=~\"$instance\"}", "legendFormat": "{{hostname}} SNR", "refId": "A"},
+            {"expr": "node_lqm_tracker_rev_snr{job=\"aredn-metrics\",instance=~\"$instance\"}", "legendFormat": "{{hostname}} reverse SNR", "refId": "B"}
+          ],
+          "title": "RF Signal-to-Noise Ratio",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"drawStyle": "line", "lineInterpolation": "smooth", "lineWidth": 2, "fillOpacity": 10, "showPoints": "never", "spanNulls": true}, "unit": "dBm"}, "overrides": []},
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 38},
+          "id": 15,
+          "options": {"legend": {"calcs": ["lastNotNull", "min", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
+          "targets": [{"expr": "node_wifi_station_signal{job=\"aredn-metrics\",instance=~\"$instance\"}", "legendFormat": "{{mac}} {{device}}", "refId": "A"}],
+          "title": "Wi-Fi Station RSSI",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"drawStyle": "line", "lineInterpolation": "smooth", "lineWidth": 2, "fillOpacity": 10, "showPoints": "never", "spanNulls": true}, "unit": "percent", "min": 0, "max": 100}, "overrides": []},
+          "gridPos": {"h": 8, "w": 8, "x": 0, "y": 46},
+          "id": 16,
+          "options": {"legend": {"calcs": ["lastNotNull", "min", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
+          "targets": [{"expr": "node_lqm_tracker_ping_quality{job=\"aredn-metrics\",instance=~\"$instance\"}", "legendFormat": "{{hostname}}", "refId": "A"}],
+          "title": "Ping Quality",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"drawStyle": "line", "lineInterpolation": "smooth", "lineWidth": 2, "fillOpacity": 10, "showPoints": "never", "spanNulls": true}, "unit": "short"}, "overrides": []},
+          "gridPos": {"h": 8, "w": 8, "x": 8, "y": 46},
+          "id": 17,
+          "options": {"legend": {"calcs": ["lastNotNull", "min", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
+          "targets": [{"expr": "node_lqm_tracker_lq{job=\"aredn-metrics\",instance=~\"$instance\"}", "legendFormat": "{{hostname}}", "refId": "A"}],
+          "title": "Link Quality (Exporter Value)",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"drawStyle": "line", "lineInterpolation": "smooth", "lineWidth": 2, "fillOpacity": 10, "showPoints": "never", "spanNulls": true}, "unit": "ops"}, "overrides": []},
+          "gridPos": {"h": 8, "w": 8, "x": 16, "y": 46},
+          "id": 18,
+          "options": {"legend": {"calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
+          "targets": [
+            {"expr": "rate(node_lqm_tracker_tx_packets_total{job=\"aredn-metrics\",instance=~\"$instance\"}[5m])", "legendFormat": "{{hostname}} packets", "refId": "A"},
+            {"expr": "rate(node_lqm_tracker_tx_retries_total{job=\"aredn-metrics\",instance=~\"$instance\"}[5m])", "legendFormat": "{{hostname}} retries", "refId": "B"},
+            {"expr": "rate(node_lqm_tracker_tx_fail_total{job=\"aredn-metrics\",instance=~\"$instance\"}[5m])", "legendFormat": "{{hostname}} failures", "refId": "C"}
+          ],
+          "title": "LQM Transmit Packet Rate",
+          "type": "timeseries"
         }
       ],
       "refresh": "30s",
