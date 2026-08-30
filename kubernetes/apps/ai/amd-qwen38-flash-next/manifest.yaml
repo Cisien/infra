@@ -1,20 +1,21 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: amd-gemma
+  name: amd-qwen38-flash-next
   namespace: ai
 spec:
-  replicas: 0
+  replicas: 1
   strategy:
     type: Recreate
   selector:
     matchLabels:
-      app.kubernetes.io/name: amd-gemma
+      app.kubernetes.io/name: amd-qwen38-flash-next
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: amd-gemma
+        app.kubernetes.io/name: amd-qwen38-flash-next
     spec:
+      terminationGracePeriodSeconds: 30
       nodeSelector:
         ai.cisien.com/vendor: amd
       tolerations:
@@ -25,94 +26,100 @@ spec:
       resourceClaims:
         - name: amd-gpu
           resourceClaimName: shared-amd-gpu
-      initContainers:
-        - name: model-cache
-          image: ghcr.io/oras-project/oras:v1.3.0
-          command: ["/bin/sh", "-ec"]
-          args:
-            - |
-              cache=/models/gemma-4-e4b-q4
-              complete="$cache/.complete"
-              if test -f "$complete"; then exit 0; fi
-              tmp=$(mktemp -d /models/.gemma-4-e4b-q4.XXXXXX)
-              trap 'rm -rf "$tmp"' EXIT
-              oras pull --username "$OCI_USERNAME" --password "$OCI_PASSWORD" --output "$tmp" registry.cisien.com/ai-models/gemma-4-e4b-q4:2026-08-11-r2
-              model_file=$(find "$tmp" -type f -name 'gemma-4-E4B-it-Q4_K_M.gguf' | head -n 1)
-              test -n "$model_file"
-              model_dir=$(dirname "$model_file")
-              rm -rf "$cache"
-              mv "$model_dir" "$cache"
-              touch "$complete"
-          env:
-            - name: OCI_USERNAME
-              valueFrom:
-                secretKeyRef:
-                  name: oci-registry-client
-                  key: username
-            - name: OCI_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: oci-registry-client
-                  key: password
-          volumeMounts:
-            - name: models
-              mountPath: /models
+      imagePullSecrets:
+        - name: oci-registry-pull
       containers:
         - name: llama-server
-          image: ghcr.io/ggml-org/llama.cpp:server-rocm
+          image: registry.cisien.com/ai-runtime/engramhalo-qwen38-flash-next@sha256:b94bbf00954fa7af6c81b72fbb05d9429719c3cadafaa846cf23bf0991825ee8
           args:
             - --host
             - 0.0.0.0
             - --port
             - "8080"
-            - --model
-            - /models/gemma-4-e4b-q4/gemma-4-E4B-it-Q4_K_M.gguf
+            - -hf
+            - unsloth/Qwen3.8-Flash-Next-GGUF:UD-IQ3_XXS
             - --alias
-            - gemma-classifier
+            - robot
             - --jinja
-            - --ctx-size
-            - "32768"
-            - --parallel
-            - "4"
+            - --no-webui
             - --n-gpu-layers
             - "999"
             - --flash-attn
             - "on"
+            - --ctx-size
+            - "262144"
+            - --parallel
+            - "1"
+            - --batch-size
+            - "8192"
+            - --ubatch-size
+            - "2048"
             - --threads
-            - "16"
+            - "4"
+            - --load-mode
+            - mmap
+            - --tensor-read-lazy
+            - "on"
+            - --cache-type-k
+            - q8_0
+            - --cache-type-v
+            - q8_0
             - --temp
-            - "0.2"
-            - --top-p
-            - "0.9"
-            - --top-k
-            - "40"
+            - "1.0"
             - --min-p
             - "0.0"
+            - --top-p
+            - "0.95"
+            - --top-k
+            - "20"
+            - --repeat-penalty
+            - "1.0"
+            - --presence-penalty
+            - "0.0"
             - --reasoning
-            - "off"
+            - "on"
+            - --reasoning-preserve
+            - --reasoning-format
+            - deepseek
+            - --chat-template-kwargs
+            - '{"preserve_thinking":true}'
+            - --image-min-tokens
+            - "1024"
+            - --spec-type
+            - draft-mtp,ngram-mod
+            - --spec-draft-hf
+            - EasiiX/Qwen3.8-Flash-Next-MTP-Strix-Halo-GGUF:Q8_0
+            - --spec-draft-n-max
+            - "4"
+            - --spec-draft-p-min
+            - "0.75"
             - --metrics
           env:
+            - name: LLAMA_CACHE
+              value: /models
             - name: HIP_VISIBLE_DEVICES
               value: "0"
             - name: ROCR_VISIBLE_DEVICES
               value: "0"
+            - name: ROCBLAS_USE_HIPBLASLT
+              value: "1"
           ports:
             - name: http
               containerPort: 8080
           resources:
             requests:
-              cpu: "8"
-              memory: 16Gi
+              cpu: "16"
+              memory: 120Gi
             limits:
-              cpu: "8"
-              memory: 16Gi
+              cpu: "16"
+              memory: 120Gi
             claims:
               - name: amd-gpu
           startupProbe:
             httpGet:
               path: /health
               port: http
-            failureThreshold: 180
+            failureThreshold: 360
             periodSeconds: 10
           readinessProbe:
             httpGet:
@@ -127,7 +134,6 @@ spec:
           volumeMounts:
             - name: models
               mountPath: /models
-              readOnly: true
       volumes:
         - name: models
           persistentVolumeClaim:
@@ -136,13 +142,13 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: amd-gemma
+  name: amd-qwen38-flash-next
   namespace: ai
   labels:
     metrics: llama-cpp
 spec:
   selector:
-    app.kubernetes.io/name: amd-gemma
+    app.kubernetes.io/name: amd-qwen38-flash-next
   ports:
     - name: http
       port: 8080

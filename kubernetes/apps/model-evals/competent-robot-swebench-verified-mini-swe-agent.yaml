@@ -1,0 +1,42 @@
+# Local Podman execution overlay for mini-SWE-agent 2.4.6.
+# Invoke it after mini-SWE-agent's built-in swebench.yaml base configuration.
+# The evaluator uses the authenticated internal LiteLLM Gateway.
+# Per-instance SWE-bench containers run rootless through Podman on this host.
+run:
+  id: competent-robot-swebench-verified-mini-swe-agent-r1
+  dataset: princeton-nlp/SWE-Bench_Verified
+  split: test
+  agent_package: mini-swe-agent==2.4.6
+  task_timeout_seconds: 1800
+  agent_step_limit: 100
+  worker_count: 2
+
+candidate:
+  model_alias: competent-robot
+  model_revision: 319f741cce68d7914884900c138a1fbb70a42f30
+  tokenizer: RadixArk/Qwen3.8-27B-NVFP4
+  runtime_image: eugr/spark-vllm@sha256:19d2158d320ca4c8704ebf56990de2a40b71055d6d7a5a6829a877db6a1e9125
+  max_model_len: 262144
+
+agent:
+  step_limit: 100
+  cost_limit: 0
+
+environment:
+  executable: podman
+  timeout: 120
+  container_timeout: 1800s
+  pull_timeout: 900
+  run_args:
+    - --rm
+    - --network=none
+
+model:
+  # LiteLLM routes this OpenAI-compatible model name to the internal candidate Service.
+  model_name: openai/competent-robot
+  cost_tracking: ignore_errors
+  model_kwargs:
+    api_base: http://litellm.local.cisien.com/v1
+    temperature: 0
+    max_tokens: 8192
+    parallel_tool_calls: false

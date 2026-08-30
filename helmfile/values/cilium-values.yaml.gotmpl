@@ -45,6 +45,10 @@ gatewayAPI:
   enabled: true
 
 envoy:
+  # Gateway stream-idle timer. Was the chart default of 300s, which cut off
+  # LLM requests during long uncached prefills (no bytes flow until the first
+  # token). Set to match LiteLLM's default request timeout (6000s / 100 min).
+  streamIdleTimeoutDurationSeconds: 6000
   prometheus:
     serviceMonitor:
       enabled: true

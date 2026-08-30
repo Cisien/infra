@@ -1,0 +1,83 @@
+#!/usr/bin/env python3
+"""Report progress for a local mini-SWE-agent SWE-bench run."""
+
+import argparse
+import json
+import subprocess
+import sys
+import time
+from urllib.error import URLError
+from urllib.request import urlopen
+from pathlib import Path
+
+REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(REPOSITORY_ROOT / "kubernetes/apps/model-evals/runner/src"))
+
+from model_evals.swebench import collect_run_status
+
+
+def agent_pids(output_dir: Path) -> list[int]:
+    result = subprocess.run(["ps", "-eo", "pid=,args="], check=True, capture_output=True, text=True)
+    pids = []
+    for line in result.stdout.splitlines():
+        fields = line.strip().split(maxsplit=1)
+        if len(fields) != 2 or "mini-extra swebench" not in fields[1]:
+            continue
+        command = fields[1].split()
+        if "--output" not in command:
+            continue
+        configured_output = Path(command[command.index("--output") + 1]).resolve()
+        if configured_output == output_dir:
+            pids.append(int(fields[0]))
+    return pids
+
+
+def sandbox_count() -> int:
+    result = subprocess.run(
+        ["podman", "ps", "--format", "{{.Names}}"], check=True, capture_output=True, text=True
+    )
+    return sum(name.startswith("minisweagent-") for name in result.stdout.splitlines())
+
+
+def litellm_healthy() -> bool:
+    try:
+        with urlopen("http://litellm.local.cisien.com/health/liveliness", timeout=3) as response:
+            return response.status == 200
+    except URLError:
+        return False
+
+
+def report(output_dir: Path, total_instances: int) -> dict:
+    status = collect_run_status(output_dir, total_instances=total_instances)
+    pids = agent_pids(output_dir)
+    status["agent_pids"] = pids
+    status["active_sandboxes"] = sandbox_count()
+    status["litellm_healthy"] = litellm_healthy()
+    if status["state"] == "unknown":
+        status["state"] = "running" if pids else "stopped-unrecorded"
+    return status
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "output_dir",
+        nargs="?",
+        default=REPOSITORY_ROOT / "artifacts/model-evals/competent-robot-swebench-verified-mini-swe-agent-r1/full",
+        type=Path,
+    )
+    parser.add_argument("--total-instances", type=int, default=500)
+    parser.add_argument("--watch", type=float, metavar="SECONDS")
+    arguments = parser.parse_args()
+    output_dir = arguments.output_dir.resolve()
+
+    while True:
+        status = report(output_dir, arguments.total_instances)
+        print(json.dumps(status, sort_keys=True))
+        if arguments.watch is None or status["state"] not in {"running", "starting"}:
+            return 0
+        time.sleep(arguments.watch)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

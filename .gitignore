@@ -12,3 +12,5 @@ kubeconfig
 .env.*
 !.env.example
 kubernetes/gateway/gateway-tls.secret.yaml
+artifacts/
+logs/

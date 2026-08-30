@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# Keep a local port-forward to the amd-qwen38-flash-next service alive on
+# 127.0.0.1:18080. Restarts the forward on any exit. Safe to run repeatedly;
+# a second instance will simply fail to bind and exit.
+set -uo pipefail
+
+PORT=18080
+while true; do
+  kubectl -n ai port-forward service/amd-qwen38-flash-next "${PORT}:8080"
+  echo "[portforward] exit at $(date -u +%H:%M:%SZ); restarting in 3s" >&2
+  sleep 3
+done

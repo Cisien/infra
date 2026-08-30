@@ -1,0 +1,14 @@
+#!/bin/sh
+set -eu
+
+if [ "$#" -ne 1 ]; then
+  printf '%s\n' "usage: $0 RUN_DIRECTORY" >&2
+  exit 64
+fi
+
+if [ ! -f "$1/run.json" ]; then
+  printf '%s\n' "missing run metadata: $1/run.json" >&2
+  exit 1
+fi
+
+python -m json.tool "$1/run.json"

@@ -32,6 +32,10 @@ kubeEtcd:
 # Grafana namespace restricted.
 prometheus-node-exporter:
   namespaceOverride: monitoring-node-exporter
+  # The cpufreq collector blocks on the ARM64 GB10 worker. CPU utilization does
+  # not use these frequency metrics.
+  extraArgs:
+    - --no-collector.cpufreq
 
 grafana:
   grafana.ini:

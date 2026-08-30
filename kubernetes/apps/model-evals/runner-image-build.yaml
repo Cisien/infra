@@ -1,0 +1,74 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: model-evals-runner-build-context
+  namespace: ai
+data:
+  Dockerfile: |
+    FROM docker.io/library/python@sha256:7a8b475003c4fe15a2cd4e55e5cfc2f3560bdc9333d624f24cdd6d4340fd7a17
+
+    ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
+        PYTHONDONTWRITEBYTECODE=1 \
+        PYTHONUNBUFFERED=1
+
+    RUN pip install --no-cache-dir 'lm-eval[api]==0.4.12' transformers==4.57.3
+
+    ENTRYPOINT ["lm_eval"]
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: model-evals-runner-build
+  namespace: ai
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 1800
+  ttlSecondsAfterFinished: 86400
+  template:
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      nodeSelector:
+        homelab.cisien.com/role: general-worker
+      initContainers:
+        - name: kaniko
+          image: gcr.io/kaniko-project/executor@sha256:4e7a52dd1f14872430652bb3b027405b8dfd17c4538751c620ac005741ef9698
+          args:
+            - --context=dir:///context
+            - --dockerfile=/context/Dockerfile
+            - --destination=registry.cisien.com/ai-runtime/lm-eval:0.4.12-r1
+            - --no-push
+            - --tar-path=/output/image.tar
+            - --reproducible
+          volumeMounts:
+            - name: build-context
+              mountPath: /context
+            - name: output
+              mountPath: /output
+      containers:
+        - name: publish-oci
+          image: quay.io/skopeo/stable@sha256:11203e84159f6568c517c1765ee9a6de15685972c86bc1d27648ba7061486f65
+          command: ["/bin/sh", "-ec"]
+          args:
+            - |
+              skopeo copy --format oci docker-archive:/output/image.tar oci:/output/oci:0.4.12-r1
+              skopeo copy --format oci oci:/output/oci:0.4.12-r1 docker://registry.cisien.com/ai-runtime/lm-eval:0.4.12-r1
+          volumeMounts:
+            - name: output
+              mountPath: /output
+            - name: registry-auth
+              mountPath: /root/.docker
+              readOnly: true
+
+      volumes:
+        - name: build-context
+          configMap:
+            name: model-evals-runner-build-context
+        - name: registry-auth
+          secret:
+            secretName: oci-registry-pull
+            items:
+              - key: .dockerconfigjson
+                path: config.json
+        - name: output
+          emptyDir: {}

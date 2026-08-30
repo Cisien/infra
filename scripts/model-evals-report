@@ -1,0 +1,15 @@
+#!/bin/sh
+set -eu
+
+if [ "$#" -ne 1 ]; then
+  printf '%s\n' "usage: $0 RESULT_ROOT" >&2
+  exit 64
+fi
+
+python -c 'import json, pathlib, sys
+root = pathlib.Path(sys.argv[1])
+print("| Run ID | Candidate | Benchmark | Revision | Seed | Status |")
+print("|---|---|---|---|---:|---|")
+for path in sorted(root.glob("*/run.json")):
+    value = json.loads(path.read_text())
+    print("| {run_id} | {candidate_id} | {benchmark} | {benchmark_revision} | {seed} | {status} |".format(**value))' "$1"

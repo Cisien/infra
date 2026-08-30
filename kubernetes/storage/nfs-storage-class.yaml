@@ -12,12 +12,10 @@ reclaimPolicy: Retain
 allowVolumeExpansion: true
 volumeBindingMode: Immediate
 mountOptions:
-  # The NAS NFSv3 service is fixed on TCP/2049, but its rpcbind lookup is not
-  # reachable from worker VLANs. Use the current TCP mountd port directly.
-  # The port was verified from a worker with `rpcinfo -p 192.168.1.250`.
+  # NFSv3 is served on TCP/2049. Let rpcbind discover mountd: the NAS selects
+  # a new dynamic mountd port after a service restart or reboot.
   - nfsvers=3
   - nolock
   - proto=tcp
   - port=2049
   - mountproto=tcp
-  - mountport=59631

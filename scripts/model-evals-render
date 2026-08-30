@@ -1,0 +1,10 @@
+#!/bin/sh
+set -eu
+
+if [ "$#" -ne 4 ]; then
+  printf '%s\n' "usage: $0 CANDIDATE BENCHMARK REVISION SEED" >&2
+  exit 64
+fi
+
+exec env PYTHONPATH="kubernetes/apps/model-evals/runner/src${PYTHONPATH:+:$PYTHONPATH}" \
+  python -m model_evals.cli render "$1" "$2" "$3" "$4"

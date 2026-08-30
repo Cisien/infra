@@ -1,0 +1,11 @@
+#!/bin/sh
+set -eu
+
+if [ "$#" -ne 5 ]; then
+  printf '%s\n' "usage: $0 CANDIDATE BENCHMARK REVISION SEED RESULT_ROOT" >&2
+  exit 64
+fi
+
+printf '%s\n' "Creating local immutable run metadata only; this command does not apply Kubernetes resources." >&2
+exec env PYTHONPATH="kubernetes/apps/model-evals/runner/src${PYTHONPATH:+:$PYTHONPATH}" \
+  python -m model_evals.cli create-run "$1" "$2" "$3" "$4" "$5"

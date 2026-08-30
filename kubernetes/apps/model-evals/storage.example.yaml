@@ -1,0 +1,14 @@
+# This file is deliberately excluded from kustomization.yaml.
+# Select a verified retained StorageClass before creating a result PVC.
+# apiVersion: v1
+# kind: PersistentVolumeClaim
+# metadata:
+#   name: evaluation-results
+#   namespace: model-evals
+# spec:
+#   accessModes: [ReadWriteOnce]
+#   storageClassName: REPLACE_AFTER_DISCOVERY
+#   persistentVolumeReclaimPolicy: Retain
+#   resources:
+#     requests:
+#       storage: 100Gi

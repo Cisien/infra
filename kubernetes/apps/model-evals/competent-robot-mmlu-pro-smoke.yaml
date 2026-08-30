@@ -1,0 +1,71 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: model-evals-results
+  namespace: ai
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: proxmox-ceph-rbd
+  resources:
+    requests:
+      storage: 50Gi
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: competent-robot-mmlu-pro-smoke
+  namespace: ai
+  labels:
+    model-evals.cisien.com/role: evaluator
+    model-evals.cisien.com/candidate-id: competent-robot
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 14400
+  ttlSecondsAfterFinished: 604800
+  template:
+    metadata:
+      labels:
+        model-evals.cisien.com/role: evaluator
+        model-evals.cisien.com/candidate-id: competent-robot
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      nodeSelector:
+        homelab.cisien.com/role: general-worker
+      containers:
+        - name: lm-eval
+          image: docker.io/library/python@sha256:7a8b475003c4fe15a2cd4e55e5cfc2f3560bdc9333d624f24cdd6d4340fd7a17
+          command: ["/bin/sh", "-ec"]
+          args:
+            - |
+              pip install --no-cache-dir 'lm-eval[api]==0.4.12' transformers==4.57.3
+              mkdir -p /results/competent-robot-mmlu-pro-smoke
+              exec lm_eval \
+                --model local-completions \
+                --model_args model=competent-robot,base_url=http://nvidia-gb10-qwen38.ai.svc.cluster.local:8080/v1/completions,num_concurrent=1,tokenizer=RadixArk/Qwen3.8-27B-NVFP4,tokenizer_backend=huggingface,max_length=262144,max_gen_toks=64 \
+                --tasks mmlu_pro \
+                --limit 5 \
+                --batch_size 1 \
+                --gen_kwargs max_gen_toks=64 \
+                --output_path /results/competent-robot-mmlu-pro-smoke
+          resources:
+            requests:
+              cpu: "1"
+              memory: 4Gi
+            limits:
+              cpu: "2"
+              memory: 8Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+            seccompProfile:
+              type: RuntimeDefault
+          volumeMounts:
+            - name: results
+              mountPath: /results
+      volumes:
+        - name: results
+          persistentVolumeClaim:
+            claimName: model-evals-results

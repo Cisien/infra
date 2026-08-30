@@ -1,0 +1,29 @@
+{
+  "candidate_id": "example-vllm",
+  "model": {
+    "source": "example/model",
+    "revision": "0123456789abcdef",
+    "chat_template_revision": "0123456789abcdef"
+  },
+  "runtime": {
+    "engine": "vllm",
+    "image": "example/runtime@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "version": "1.0.0"
+  },
+  "serving": {"max_model_len": 32768, "max_num_seqs": 1},
+  "hardware_profile": "nvidia-gb10-single-gpu",
+  "model_cache_claim": "example-model-cache",
+  "scheduling": {
+    "node_selector": {"ai.cisien.com/accelerator": "gb10"},
+    "gpu_resource": "nvidia.com/gpu.shared",
+    "gpu_count": 1,
+    "tolerations": [
+      {
+        "key": "ai.cisien.com/gpu",
+        "operator": "Equal",
+        "value": "true",
+        "effect": "NoSchedule"
+      }
+    ]
+  }
+}

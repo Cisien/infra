@@ -14,6 +14,7 @@ resources:
   - ai/nvidia-gb10-qwen38/rollback-vllm-v0.27.1.yaml
   - ai/nvidia-qwen/unsloth.yaml
   - ai/nvidia-qwen38/unsloth.yaml
+  - ai/amd-qwen38-flash-next/manifest.yaml
   - ai/amd-gemma/manifest.yaml
   - ai/amd-muse/manifest.yaml
   - ai/flux-image/manifest.yaml
@@ -23,6 +24,7 @@ resources:
   - ai/litellm/route.yaml
   - ai/laguna-chat-template/configmap.yaml
   - ai/storage/local-storage.yaml
+  - model-evals
   - ai/amd-gpu/resource-claim.yaml
   - ai/amd-gpu/node-metadata.yaml
   - monitoring/secrets/grafana-admin.sealed.yaml

@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root=$(git rev-parse --show-toplevel)
+venv=${MSWEA_VENV:-/tmp/mini-swe-agent-venv}
+base_config="$venv/lib/python3.14/site-packages/minisweagent/config/benchmarks/swebench.yaml"
+overlay_config="$repo_root/kubernetes/apps/model-evals/competent-robot-swebench-verified-mini-swe-agent.yaml"
+output_dir=${1:-"$repo_root/artifacts/model-evals/competent-robot-swebench-verified-mini-swe-agent-r1/full"}
+
+if [[ ! -x "$venv/bin/mini-extra" || ! -f "$base_config" ]]; then
+  printf 'mini-SWE-agent 2.4.6 is not installed at %s\n' "$venv" >&2
+  exit 1
+fi
+if [[ -z "${LITELLM_API_KEY:-}" && -r "$HOME/litellm-key.txt" ]]; then
+  LITELLM_API_KEY=$(<"$HOME/litellm-key.txt")
+fi
+if [[ -z "${LITELLM_API_KEY:-}" ]]; then
+  printf 'Set LITELLM_API_KEY or provide a readable ~/litellm-key.txt\n' >&2
+  exit 1
+fi
+
+mkdir -p "$output_dir"
+started_at=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
+write_status() {
+  PYTHONPATH="$repo_root/kubernetes/apps/model-evals/runner/src" python -c \
+    'from model_evals.swebench import write_run_status; import sys; write_run_status(__import__("pathlib").Path(sys.argv[1]), sys.argv[2], None if sys.argv[3] == "null" else int(sys.argv[3]), started_at=sys.argv[4], agent_pid=None if sys.argv[5] == "null" else int(sys.argv[5]))' \
+    "$output_dir" "$1" "$2" "$started_at" "$3"
+}
+write_status starting null null
+curl --connect-timeout 2 --max-time 5 --fail --silent \
+  "http://litellm.local.cisien.com/health/liveliness" >/dev/null
+export OPENAI_API_KEY="$LITELLM_API_KEY"
+
+"$venv/bin/mini-extra" swebench \
+  --subset verified \
+  --split test \
+  --workers 2 \
+  --config "$base_config" \
+  --config "$overlay_config" \
+  --output "$output_dir" &
+agent_pid=$!
+write_status running null "$agent_pid"
+
+if wait "$agent_pid"; then
+  write_status complete 0 "$agent_pid"
+else
+  exit_code=$?
+  write_status failed "$exit_code" "$agent_pid"
+  exit "$exit_code"
+fi

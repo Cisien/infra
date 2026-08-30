@@ -1,0 +1,63 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: competent-robot-mmlu-pro-full-r1
+  namespace: ai
+  labels:
+    model-evals.cisien.com/role: evaluator
+    model-evals.cisien.com/candidate-id: competent-robot
+    model-evals.cisien.com/benchmark: mmlu-pro
+  annotations:
+    model-evals.cisien.com/model-revision: 319f741cce68d7914884900c138a1fbb70a42f30
+    model-evals.cisien.com/runtime-image: eugr/spark-vllm@sha256:19d2158d320ca4c8704ebf56990de2a40b71055d6d7a5a6829a877db6a1e9125
+    model-evals.cisien.com/evaluator: lm-eval==0.4.12
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 172800
+  ttlSecondsAfterFinished: 604800
+  template:
+    metadata:
+      labels:
+        model-evals.cisien.com/role: evaluator
+        model-evals.cisien.com/candidate-id: competent-robot
+        model-evals.cisien.com/benchmark: mmlu-pro
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      nodeSelector:
+        homelab.cisien.com/role: general-worker
+      containers:
+        - name: lm-eval
+          image: docker.io/library/python@sha256:7a8b475003c4fe15a2cd4e55e5cfc2f3560bdc9333d624f24cdd6d4340fd7a17
+          command: ["/bin/sh", "-ec"]
+          args:
+            - |
+              pip install --no-cache-dir 'lm-eval[api]==0.4.12' transformers==4.57.3
+              mkdir -p /results/competent-robot-mmlu-pro-full-r1
+              exec lm_eval \
+                --model local-completions \
+                --model_args model=competent-robot,base_url=http://nvidia-gb10-qwen38.ai.svc.cluster.local:8080/v1/completions,num_concurrent=4,tokenizer=RadixArk/Qwen3.8-27B-NVFP4,tokenizer_backend=huggingface,max_length=262144 \
+                --tasks mmlu_pro \
+                --batch_size 1 \
+                --output_path /results/competent-robot-mmlu-pro-full-r1 \
+                --log_samples
+          resources:
+            requests:
+              cpu: "1"
+              memory: 4Gi
+            limits:
+              cpu: "2"
+              memory: 6Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+            seccompProfile:
+              type: RuntimeDefault
+          volumeMounts:
+            - name: results
+              mountPath: /results
+      volumes:
+        - name: results
+          persistentVolumeClaim:
+            claimName: model-evals-results

@@ -1,120 +1,120 @@
 apiVersion: grafana.integreatly.org/v1beta1
 kind: GrafanaFolder
 metadata:
-  name: gpu-monitoring
+  name: ai-hosts-monitoring
   namespace: monitoring
 spec:
   instanceSelector:
     matchLabels:
       dashboards: monitoring-grafana
-  title: GPU Monitoring
+  title: AI Hosts
 ---
 apiVersion: grafana.integreatly.org/v1beta1
 kind: GrafanaDashboard
 metadata:
-  name: gpu-workers
+  name: ai-hosts
   namespace: monitoring
 spec:
-  folderRef: gpu-monitoring
+  folderRef: ai-hosts-monitoring
   instanceSelector:
     matchLabels:
       dashboards: monitoring-grafana
   json: |
     {
       "annotations": {"list": []},
-      "description": "Metrics for the dedicated NVIDIA and AMD Talos GPU workers.",
+      "description": "Inference throughput and host resources for AI workers. Prompt and generation throughput, CPU and GPU utilization, and CPU and GPU temperature use separate panels.",
       "editable": true,
       "graphTooltip": 1,
       "links": [],
       "panels": [
         {
           "datasource": {"type": "prometheus", "uid": "prometheus"},
-          "fieldConfig": {"defaults": {"unit": "short", "thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": null}, {"color": "green", "value": 1}]}}, "overrides": []},
-          "gridPos": {"h": 4, "w": 12, "x": 0, "y": 0},
+          "fieldConfig": {"defaults": {"unit": "ops", "custom": {"drawStyle": "line", "fillOpacity": 10, "lineWidth": 2, "showPoints": "never", "spanNulls": true}}, "overrides": []},
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
           "id": 1,
-          "options": {"colorMode": "value", "graphMode": "none", "justifyMode": "center", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto"},
-          "targets": [{"expr": "up{namespace=\"nvidia-gpu-operator\", service=\"nvidia-dcgm-exporter\"}", "refId": "A"}],
-          "title": "NVIDIA DCGM exporter target",
-          "type": "stat"
+          "options": {"legend": {"calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
+          "targets": [{"expr": "sum by (node) ((rate(vllm:prompt_tokens_total[5m]) * on (namespace, pod) group_left(node) kube_pod_info) or (llamacpp:prompt_tokens_seconds * on (namespace, pod) group_left(node) kube_pod_info))", "legendFormat": "{{node}}", "refId": "A"}],
+          "title": "Prompt processing throughput by host",
+          "type": "timeseries"
         },
         {
           "datasource": {"type": "prometheus", "uid": "prometheus"},
-          "fieldConfig": {"defaults": {"unit": "short", "thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": null}, {"color": "green", "value": 1}]}}, "overrides": []},
-          "gridPos": {"h": 4, "w": 12, "x": 12, "y": 0},
+          "fieldConfig": {"defaults": {"unit": "ops", "custom": {"drawStyle": "line", "fillOpacity": 10, "lineWidth": 2, "showPoints": "never", "spanNulls": true}}, "overrides": []},
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
           "id": 2,
-          "options": {"colorMode": "value", "graphMode": "none", "justifyMode": "center", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto"},
-          "targets": [{"expr": "up{namespace=\"amd-gpu-operator\", service=\"default-metrics-exporter\"}", "refId": "A"}],
-          "title": "AMD metrics exporter target",
-          "type": "stat"
+          "options": {"legend": {"calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
+          "targets": [{"expr": "sum by (node) ((rate(vllm:generation_tokens_total[5m]) * on (namespace, pod) group_left(node) kube_pod_info) or (llamacpp:predicted_tokens_seconds * on (namespace, pod) group_left(node) kube_pod_info))", "legendFormat": "{{node}}", "refId": "A"}],
+          "title": "Token generation throughput by host",
+          "type": "timeseries"
         },
         {
           "datasource": {"type": "prometheus", "uid": "prometheus"},
-          "fieldConfig": {"defaults": {"unit": "percent", "custom": {"drawStyle": "line", "fillOpacity": 10, "lineWidth": 2, "showPoints": "never", "spanNulls": true}}, "overrides": []},
-          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4},
+          "fieldConfig": {"defaults": {"unit": "percentunit", "max": 1, "min": 0, "custom": {"drawStyle": "line", "fillOpacity": 10, "lineWidth": 2, "showPoints": "never", "spanNulls": true}}, "overrides": []},
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
           "id": 3,
           "options": {"legend": {"calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
-          "targets": [{"expr": "DCGM_FI_DEV_GPU_UTIL{Hostname=~\"ai-nvidia-01|ai-nvidia-02\"}", "legendFormat": "{{Hostname}} GPU {{gpu}}", "refId": "A"}, {"expr": "DCGM_FI_DEV_MEM_COPY_UTIL{Hostname=\"ai-nvidia-02\"}", "legendFormat": "ai-nvidia-02 memory copy GPU {{gpu}}", "refId": "B"}],
-          "title": "NVIDIA GPU and GB10 memory-copy utilization",
+          "targets": [{"expr": "(1 - avg by (instance) (rate(node_cpu_seconds_total{mode=\"idle\"}[5m]))) * on (instance) group_left(nodename) max by (instance, nodename) (node_uname_info{nodename=~\"ai-(amd|nvidia)-.*\"})", "legendFormat": "{{nodename}}", "refId": "A"}],
+          "title": "CPU utilization by host",
           "type": "timeseries"
         },
         {
           "datasource": {"type": "prometheus", "uid": "prometheus"},
-          "fieldConfig": {"defaults": {"unit": "decmbytes", "custom": {"drawStyle": "line", "fillOpacity": 10, "lineWidth": 2, "showPoints": "never", "spanNulls": true}}, "overrides": []},
+          "fieldConfig": {"defaults": {"unit": "percent", "max": 100, "min": 0, "custom": {"drawStyle": "line", "fillOpacity": 10, "lineWidth": 2, "showPoints": "never", "spanNulls": true}}, "overrides": []},
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
           "id": 4,
-          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 12},
           "options": {"legend": {"calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
-          "targets": [{"expr": "DCGM_FI_DEV_FB_USED{Hostname=~\"ai-nvidia-01|ai-nvidia-02\"}", "legendFormat": "{{Hostname}} GPU {{gpu}} used", "refId": "A"}],
-          "title": "NVIDIA framebuffer used (discrete GPUs)",
+          "targets": [{"expr": "max by (Hostname, gpu) (DCGM_FI_DEV_GPU_UTIL)", "legendFormat": "{{Hostname}} GPU {{gpu}}", "refId": "A"}, {"expr": "max by (hostname, gpu_id) (gpu_gfx_activity)", "legendFormat": "{{hostname}} GPU {{gpu_id}}", "refId": "B"}],
+          "title": "GPU utilization by host",
           "type": "timeseries"
         },
         {
           "datasource": {"type": "prometheus", "uid": "prometheus"},
-          "fieldConfig": {"defaults": {"unit": "celsius", "custom": {"drawStyle": "line", "fillOpacity": 10, "lineWidth": 2, "showPoints": "never", "spanNulls": true}}, "overrides": [{"matcher": {"id": "byName", "options": "Power"}, "properties": [{"id": "unit", "value": "watt"}]}]},
+          "fieldConfig": {"defaults": {"unit": "bytes", "min": 0, "custom": {"drawStyle": "line", "fillOpacity": 10, "lineWidth": 2, "showPoints": "never", "spanNulls": true}}, "overrides": []},
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16},
           "id": 5,
-          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 20},
           "options": {"legend": {"calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
-          "targets": [{"expr": "DCGM_FI_DEV_GPU_TEMP{Hostname=~\"ai-nvidia-01|ai-nvidia-02\"}", "legendFormat": "Temperature {{Hostname}} GPU {{gpu}}", "refId": "A"}, {"expr": "DCGM_FI_DEV_POWER_USAGE{Hostname=~\"ai-nvidia-01|ai-nvidia-02\"}", "legendFormat": "Power {{Hostname}} GPU {{gpu}}", "refId": "B"}],
-          "title": "NVIDIA temperature and power",
+          "targets": [{"expr": "(node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) * on (instance) group_left(nodename) max by (instance, nodename) (node_uname_info{nodename=~\"ai-(amd|nvidia)-.*\"})", "legendFormat": "{{nodename}} used", "refId": "A"}],
+          "title": "System memory used by host",
           "type": "timeseries"
         },
         {
           "datasource": {"type": "prometheus", "uid": "prometheus"},
-          "fieldConfig": {"defaults": {"unit": "percent", "custom": {"drawStyle": "line", "fillOpacity": 10, "lineWidth": 2, "showPoints": "never", "spanNulls": true}}, "overrides": []},
+          "fieldConfig": {"defaults": {"unit": "bytes", "min": 0, "custom": {"drawStyle": "line", "fillOpacity": 10, "lineWidth": 2, "showPoints": "never", "spanNulls": true}}, "overrides": []},
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16},
           "id": 6,
-          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4},
           "options": {"legend": {"calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
-          "targets": [{"expr": "max by (hostname, gpu_id) (gpu_gfx_activity{hostname=\"ai-amd-01\"})", "legendFormat": "GPU {{gpu_id}}", "refId": "A"}],
-          "title": "AMD graphics activity",
+          "targets": [{"expr": "max by (Hostname, gpu) (DCGM_FI_DEV_FB_USED * 1024 * 1024)", "legendFormat": "{{Hostname}} GPU {{gpu}} framebuffer", "refId": "A"}, {"expr": "max by (hostname, gpu_id) ((gpu_total_gtt - gpu_free_gtt) * 1000000)", "legendFormat": "{{hostname}} GPU {{gpu_id}} unified", "refId": "B"}],
+          "title": "GPU memory used by host",
           "type": "timeseries"
         },
         {
           "datasource": {"type": "prometheus", "uid": "prometheus"},
-          "fieldConfig": {"defaults": {"unit": "celsius", "custom": {"drawStyle": "line", "fillOpacity": 10, "lineWidth": 2, "showPoints": "never", "spanNulls": true}}, "overrides": [{"matcher": {"id": "byName", "options": "Power GPU 0"}, "properties": [{"id": "unit", "value": "watt"}]}]},
+          "fieldConfig": {"defaults": {"unit": "celsius", "custom": {"drawStyle": "line", "fillOpacity": 10, "lineWidth": 2, "showPoints": "never", "spanNulls": true}}, "overrides": []},
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 24},
           "id": 7,
-          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 12},
           "options": {"legend": {"calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
-          "targets": [{"expr": "max by (hostname, gpu_id) (gpu_average_package_power{hostname=\"ai-amd-01\"})", "legendFormat": "Power GPU {{gpu_id}}", "refId": "A"}, {"expr": "node_hwmon_temp_celsius{instance=\"172.16.200.106:9100\"} * on (instance, chip) group_left(chip_name) node_hwmon_chip_names{instance=\"172.16.200.106:9100\", chip_name=\"amdgpu\"}", "legendFormat": "Temperature {{sensor}}", "refId": "B"}],
-          "title": "AMD temperature and package power",
+          "targets": [{"expr": "(node_hwmon_temp_celsius * on (instance, chip) group_left(chip_name) node_hwmon_chip_names{chip_name=\"k10temp\"}) * on (instance) group_left(nodename) max by (instance, nodename) (node_uname_info{nodename=~\"ai-(amd|nvidia)-.*\"})", "legendFormat": "{{nodename}} CPU {{sensor}}", "refId": "A"}, {"expr": "node_thermal_zone_temp{type=\"acpitz\"} * on (instance) group_left(nodename) max by (instance, nodename) (node_uname_info{nodename=~\"ai-(amd|nvidia)-.*\"})", "legendFormat": "{{nodename}} CPU zone {{zone}}", "refId": "B"}],
+          "title": "CPU temperature by host",
           "type": "timeseries"
         },
         {
           "datasource": {"type": "prometheus", "uid": "prometheus"},
-          "fieldConfig": {"defaults": {"unit": "decmbytes", "custom": {"drawStyle": "line", "fillOpacity": 10, "lineWidth": 2, "showPoints": "never", "spanNulls": true}}, "overrides": []},
+          "fieldConfig": {"defaults": {"unit": "celsius", "custom": {"drawStyle": "line", "fillOpacity": 10, "lineWidth": 2, "showPoints": "never", "spanNulls": true}}, "overrides": []},
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 24},
           "id": 8,
-          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 20},
           "options": {"legend": {"calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
-          "targets": [{"expr": "max by (hostname, gpu_id) (gpu_total_gtt{hostname=\"ai-amd-01\"} - gpu_free_gtt{hostname=\"ai-amd-01\"})", "legendFormat": "Used unified memory GPU {{gpu_id}}", "refId": "A"}, {"expr": "max by (hostname, gpu_id) (gpu_free_gtt{hostname=\"ai-amd-01\"})", "legendFormat": "Free unified memory GPU {{gpu_id}}", "refId": "B"}],
-          "title": "AMD memory utilization",
+          "targets": [{"expr": "max by (Hostname, gpu) (DCGM_FI_DEV_GPU_TEMP)", "legendFormat": "{{Hostname}} GPU {{gpu}}", "refId": "A"}, {"expr": "max by (nodename) ((node_hwmon_temp_celsius * on (instance, chip) group_left(chip_name) node_hwmon_chip_names{chip_name=\"amdgpu\"}) * on (instance) group_left(nodename) node_uname_info{nodename=\"ai-amd-01\"})", "legendFormat": "{{nodename}} GPU", "refId": "B"}],
+          "title": "GPU temperature by host",
           "type": "timeseries"
         }
       ],
-      "refresh": "30s",
+      "refresh": "15s",
       "schemaVersion": 39,
-      "tags": ["gpu", "nvidia", "amd", "talos"],
+      "tags": ["ai", "inference", "gpu", "host"],
       "templating": {"list": []},
       "time": {"from": "now-1h", "to": "now"},
       "timezone": "browser",
-      "title": "GPU Workers",
-      "uid": "gpu-workers",
+      "title": "AI Hosts",
+      "uid": "ai-hosts",
       "version": 1
     }

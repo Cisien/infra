@@ -1,0 +1,43 @@
+# Local Podman execution overlay for mini-SWE-agent 2.4.6.
+# Candidate: Qwen3.8-Flash-Next on the AMD Strix Halo host ai-amd-01, served by
+# the pinned EngramHalo ROCm/HIP runtime with MTP. LiteLLM routes the `robot`
+# alias to the amd-qwen38-flash-next ClusterIP. Per-instance SWE-bench containers run rootless
+# through Podman on this host with --network=none.
+run:
+  id: amd-qwen38-flash-next-swebench-verified-mini-swe-agent-r1
+  dataset: princeton-nlp/SWE-Bench_Verified
+  split: test
+  agent_package: mini-swe-agent==2.4.6
+  task_timeout_seconds: 1800
+  agent_step_limit: 100
+  worker_count: 2   # single-slot model queues concurrent requests; 2 workers keep the GPU busy
+
+candidate:
+  model_alias: robot
+  model_revision: c8b5954a88c2775c546b92593eda40ea041d3176
+  tokenizer: unsloth/Qwen3.8-Flash-Next-GGUF:UD-IQ3_XXS
+  runtime_image: registry.cisien.com/ai-runtime/engramhalo-qwen38-flash-next@sha256:b94bbf00954fa7af6c81b72fbb05d9429719c3cadafaa846cf23bf0991825ee8
+  max_model_len: 262144
+
+agent:
+  step_limit: 100
+  cost_limit: 0
+
+environment:
+  executable: podman
+  timeout: 120
+  container_timeout: 1800s
+  pull_timeout: 900
+  run_args:
+    - --rm
+    - --network=none
+
+model:
+  # LiteLLM routes this OpenAI-compatible alias to the amd-qwen38-flash-next service.
+  model_name: openai/robot
+  cost_tracking: ignore_errors
+  model_kwargs:
+    api_base: http://litellm.local.cisien.com/v1
+    temperature: 0
+    max_tokens: 8192
+    parallel_tool_calls: false

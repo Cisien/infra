@@ -139,7 +139,7 @@ metadata:
   name: amd-qwen38
   namespace: ai
 spec:
-  replicas: 1
+  replicas: 0
   strategy:
     type: RollingUpdate
     rollingUpdate:

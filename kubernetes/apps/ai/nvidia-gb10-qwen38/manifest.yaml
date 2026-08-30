@@ -44,6 +44,8 @@ spec:
             - vllm
             - serve
             - RadixArk/Qwen3.8-27B-NVFP4
+            - --revision
+            - 319f741cce68d7914884900c138a1fbb70a42f30
             - --served-model-name
             - competent-robot
             - --host
