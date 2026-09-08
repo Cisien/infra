@@ -22,7 +22,7 @@ metadata:
     app.kubernetes.io/name: aredn-metrics
 subsets:
   - addresses:
-      - ip: 10.178.191.209
+      - ip: 10.63.34.169
     ports:
       - name: metrics
         port: 80
@@ -43,7 +43,7 @@ ports:
     port: 80
 endpoints:
   - addresses:
-      - 10.178.191.209
+      - 10.63.34.169
     conditions:
       ready: true
 ---
@@ -91,7 +91,7 @@ spec:
   json: |
     {
       "annotations": {"list": []},
-      "description": "An amateur radio WiFi mesh service. Metrics are scraped from the AREDN node at 10.178.191.209.",
+      "description": "An amateur radio WiFi mesh service. Metrics are scraped from the AREDN node at 10.63.34.169.",
       "editable": true,
       "fiscalYearStartMonth": 0,
       "graphTooltip": 0,
@@ -304,6 +304,19 @@ spec:
             {"expr": "rate(node_lqm_tracker_tx_fail_total{job=\"aredn-metrics\",instance=~\"$instance\"}[5m])", "legendFormat": "{{hostname}} failures", "refId": "C"}
           ],
           "title": "LQM Transmit Packet Rate",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"drawStyle": "line", "lineInterpolation": "smooth", "lineWidth": 2, "fillOpacity": 10, "showPoints": "never", "spanNulls": true}, "unit": "percent", "min": 0, "max": 100}, "overrides": []},
+          "gridPos": {"h": 8, "w": 24, "x": 0, "y": 54},
+          "id": 19,
+          "options": {"legend": {"calcs": ["lastNotNull", "min", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
+          "targets": [
+            {"expr": "100 * rate(node_lqm_tracker_tx_retries_total{job=\"aredn-metrics\",instance=~\"$instance\"}[5m]) / (rate(node_lqm_tracker_tx_packets_total{job=\"aredn-metrics\",instance=~\"$instance\"}[5m]) + rate(node_lqm_tracker_tx_retries_total{job=\"aredn-metrics\",instance=~\"$instance\"}[5m]))", "legendFormat": "{{hostname}} retry rate", "refId": "A"},
+            {"expr": "100 * rate(node_lqm_tracker_tx_fail_total{job=\"aredn-metrics\",instance=~\"$instance\"}[5m]) / (rate(node_lqm_tracker_tx_packets_total{job=\"aredn-metrics\",instance=~\"$instance\"}[5m]) + rate(node_lqm_tracker_tx_retries_total{job=\"aredn-metrics\",instance=~\"$instance\"}[5m]))", "legendFormat": "{{hostname}} error rate", "refId": "B"}
+          ],
+          "title": "LQM Transmit Retry and Error Rate",
           "type": "timeseries"
         }
       ],
