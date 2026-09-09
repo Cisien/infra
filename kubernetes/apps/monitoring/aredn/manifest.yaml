@@ -23,6 +23,7 @@ metadata:
 subsets:
   - addresses:
       - ip: 10.63.34.169
+      - ip: 10.254.206.41
     ports:
       - name: metrics
         port: 80
@@ -44,6 +45,10 @@ ports:
 endpoints:
   - addresses:
       - 10.63.34.169
+    conditions:
+      ready: true
+  - addresses:
+      - 10.254.206.41
     conditions:
       ready: true
 ---
@@ -91,7 +96,7 @@ spec:
   json: |
     {
       "annotations": {"list": []},
-      "description": "An amateur radio WiFi mesh service. Metrics are scraped from the AREDN node at 10.63.34.169.",
+      "description": "An amateur radio WiFi mesh service. Metrics are scraped from the AREDN nodes at 10.63.34.169 and 10.254.206.41.",
       "editable": true,
       "fiscalYearStartMonth": 0,
       "graphTooltip": 0,
