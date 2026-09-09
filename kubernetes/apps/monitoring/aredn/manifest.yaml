@@ -23,7 +23,6 @@ metadata:
 subsets:
   - addresses:
       - ip: 10.63.34.169
-      - ip: 10.254.206.41
     ports:
       - name: metrics
         port: 80
@@ -47,10 +46,6 @@ endpoints:
       - 10.63.34.169
     conditions:
       ready: true
-  - addresses:
-      - 10.254.206.41
-    conditions:
-      ready: true
 ---
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
@@ -71,6 +66,76 @@ spec:
       path: /cgi-bin/metrics
       interval: 30s
       scrapeTimeout: 10s
+---
+# The remote node at 10.254.206.41 reaches the cluster over a spotty multi-hop
+# AREDN link. Give it its own scrape job with a longer timeout and interval so
+# a slow-but-usable transfer completes without dragging the shared scrape pool.
+apiVersion: v1
+kind: Service
+metadata:
+  name: aredn-metrics-spotty
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: aredn-metrics-spotty
+spec:
+  ports:
+    - name: metrics
+      port: 80
+      protocol: TCP
+---
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: aredn-metrics-spotty
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: aredn-metrics-spotty
+subsets:
+  - addresses:
+      - ip: 10.254.206.41
+    ports:
+      - name: metrics
+        port: 80
+        protocol: TCP
+---
+apiVersion: discovery.k8s.io/v1
+kind: EndpointSlice
+metadata:
+  name: aredn-metrics-spotty
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: aredn-metrics-spotty
+    kubernetes.io/service-name: aredn-metrics-spotty
+addressType: IPv4
+ports:
+  - name: metrics
+    protocol: TCP
+    port: 80
+endpoints:
+  - addresses:
+      - 10.254.206.41
+    conditions:
+      ready: true
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: aredn-metrics-spotty
+  namespace: monitoring
+  labels:
+    release: monitoring
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: aredn-metrics-spotty
+  namespaceSelector:
+    matchNames:
+      - monitoring
+  endpoints:
+    - port: metrics
+      path: /cgi-bin/metrics
+      interval: 60s
+      scrapeTimeout: 30s
 ---
 apiVersion: grafana.integreatly.org/v1beta1
 kind: GrafanaFolder
@@ -108,7 +173,7 @@ spec:
           "gridPos": {"h": 4, "w": 5, "x": 0, "y": 0},
           "id": 1,
           "options": {"colorMode": "background", "graphMode": "none", "justifyMode": "center", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto"},
-          "targets": [{"expr": "up{job=\"aredn-metrics\",instance=~\"$instance\"}", "refId": "A"}],
+          "targets": [{"expr": "up{job=~\"aredn-metrics.*\",instance=~\"$instance\"}", "refId": "A"}],
           "title": "Target",
           "type": "stat"
         },
@@ -118,7 +183,7 @@ spec:
           "gridPos": {"h": 4, "w": 5, "x": 5, "y": 0},
           "id": 2,
           "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "center", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto"},
-          "targets": [{"expr": "node_babel_neighbor_total{job=\"aredn-metrics\",instance=~\"$instance\"}", "refId": "A"}],
+          "targets": [{"expr": "node_babel_neighbor_total{job=~\"aredn-metrics.*\",instance=~\"$instance\"}", "refId": "A"}],
           "title": "Babel Neighbors",
           "type": "stat"
         },
@@ -128,7 +193,7 @@ spec:
           "gridPos": {"h": 4, "w": 5, "x": 10, "y": 0},
           "id": 3,
           "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "center", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto"},
-          "targets": [{"expr": "node_babel_route_total{job=\"aredn-metrics\",instance=~\"$instance\"}", "refId": "A"}],
+          "targets": [{"expr": "node_babel_route_total{job=~\"aredn-metrics.*\",instance=~\"$instance\"}", "refId": "A"}],
           "title": "Babel Routes",
           "type": "stat"
         },
@@ -138,7 +203,7 @@ spec:
           "gridPos": {"h": 4, "w": 5, "x": 15, "y": 0},
           "id": 4,
           "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "center", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto"},
-          "targets": [{"expr": "node_babel_xroute_total{job=\"aredn-metrics\",instance=~\"$instance\"}", "refId": "A"}],
+          "targets": [{"expr": "node_babel_xroute_total{job=~\"aredn-metrics.*\",instance=~\"$instance\"}", "refId": "A"}],
           "title": "Babel XRoutes",
           "type": "stat"
         },
@@ -148,7 +213,7 @@ spec:
           "gridPos": {"h": 4, "w": 4, "x": 20, "y": 0},
           "id": 5,
           "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "center", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto"},
-          "targets": [{"expr": "100 * (1 - node_memory_MemAvailable_bytes{job=\"aredn-metrics\",instance=~\"$instance\"} / node_memory_MemTotal_bytes{job=\"aredn-metrics\",instance=~\"$instance\"})", "refId": "A"}],
+          "targets": [{"expr": "100 * (1 - node_memory_MemAvailable_bytes{job=~\"aredn-metrics.*\",instance=~\"$instance\"} / node_memory_MemTotal_bytes{job=~\"aredn-metrics.*\",instance=~\"$instance\"})", "refId": "A"}],
           "title": "Memory Used",
           "type": "stat"
         },
@@ -159,9 +224,9 @@ spec:
           "id": 6,
           "options": {"legend": {"calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
           "targets": [
-            {"expr": "node_load1{job=\"aredn-metrics\",instance=~\"$instance\"}", "legendFormat": "1 minute", "refId": "A"},
-            {"expr": "node_load5{job=\"aredn-metrics\",instance=~\"$instance\"}", "legendFormat": "5 minutes", "refId": "B"},
-            {"expr": "node_load15{job=\"aredn-metrics\",instance=~\"$instance\"}", "legendFormat": "15 minutes", "refId": "C"}
+            {"expr": "node_load1{job=~\"aredn-metrics.*\",instance=~\"$instance\"}", "legendFormat": "1 minute", "refId": "A"},
+            {"expr": "node_load5{job=~\"aredn-metrics.*\",instance=~\"$instance\"}", "legendFormat": "5 minutes", "refId": "B"},
+            {"expr": "node_load15{job=~\"aredn-metrics.*\",instance=~\"$instance\"}", "legendFormat": "15 minutes", "refId": "C"}
           ],
           "title": "System Load",
           "type": "timeseries"
@@ -172,7 +237,7 @@ spec:
           "gridPos": {"h": 8, "w": 8, "x": 8, "y": 4},
           "id": 7,
           "options": {"legend": {"calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
-          "targets": [{"expr": "100 * (1 - avg by(instance) (rate(node_cpu_seconds_total{job=\"aredn-metrics\",instance=~\"$instance\",mode=\"idle\"}[5m])))", "legendFormat": "CPU used", "refId": "A"}],
+          "targets": [{"expr": "100 * (1 - avg by(instance) (rate(node_cpu_seconds_total{job=~\"aredn-metrics.*\",instance=~\"$instance\",mode=\"idle\"}[5m])))", "legendFormat": "CPU used", "refId": "A"}],
           "title": "CPU Used",
           "type": "timeseries"
         },
@@ -182,7 +247,7 @@ spec:
           "gridPos": {"h": 8, "w": 8, "x": 16, "y": 4},
           "id": 8,
           "options": {"legend": {"calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
-          "targets": [{"expr": "100 * (1 - node_filesystem_avail_bytes{job=\"aredn-metrics\",instance=~\"$instance\",mountpoint=\"/overlay\"} / node_filesystem_size_bytes{job=\"aredn-metrics\",instance=~\"$instance\",mountpoint=\"/overlay\"})", "legendFormat": "Overlay filesystem", "refId": "A"}],
+          "targets": [{"expr": "100 * (1 - node_filesystem_avail_bytes{job=~\"aredn-metrics.*\",instance=~\"$instance\",mountpoint=\"/overlay\"} / node_filesystem_size_bytes{job=~\"aredn-metrics.*\",instance=~\"$instance\",mountpoint=\"/overlay\"})", "legendFormat": "Overlay filesystem", "refId": "A"}],
           "title": "Overlay Storage Used",
           "type": "timeseries"
         },
@@ -193,8 +258,8 @@ spec:
           "id": 9,
           "options": {"legend": {"calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
           "targets": [
-            {"expr": "sum by(device) (rate(node_network_receive_bytes_total{job=\"aredn-metrics\",instance=~\"$instance\",device!=\"lo\"}[5m])) * 8", "legendFormat": "{{device}} RX", "refId": "A"},
-            {"expr": "sum by(device) (rate(node_network_transmit_bytes_total{job=\"aredn-metrics\",instance=~\"$instance\",device!=\"lo\"}[5m])) * 8", "legendFormat": "{{device}} TX", "refId": "B"}
+            {"expr": "sum by(device) (rate(node_network_receive_bytes_total{job=~\"aredn-metrics.*\",instance=~\"$instance\",device!=\"lo\"}[5m])) * 8", "legendFormat": "{{device}} RX", "refId": "A"},
+            {"expr": "sum by(device) (rate(node_network_transmit_bytes_total{job=~\"aredn-metrics.*\",instance=~\"$instance\",device!=\"lo\"}[5m])) * 8", "legendFormat": "{{device}} TX", "refId": "B"}
           ],
           "title": "Network Traffic",
           "type": "timeseries"
@@ -206,12 +271,12 @@ spec:
           "id": 10,
           "options": {"legend": {"calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
           "targets": [
-            {"expr": "sum(rate(node_arednlink_connection_incoming_total{job=\"aredn-metrics\",instance=~\"$instance\"}[5m]))", "legendFormat": "Connection in", "refId": "A"},
-            {"expr": "sum(rate(node_arednlink_connection_outgoing_total{job=\"aredn-metrics\",instance=~\"$instance\"}[5m]))", "legendFormat": "Connection out", "refId": "B"},
-            {"expr": "sum(rate(node_arednlink_sync_incoming_total{job=\"aredn-metrics\",instance=~\"$instance\"}[5m]))", "legendFormat": "Sync in", "refId": "C"},
-            {"expr": "sum(rate(node_arednlink_sync_outgoing_total{job=\"aredn-metrics\",instance=~\"$instance\"}[5m]))", "legendFormat": "Sync out", "refId": "D"},
-            {"expr": "sum(rate(node_arednlink_keepalive_incoming_total{job=\"aredn-metrics\",instance=~\"$instance\"}[5m]))", "legendFormat": "Keepalive in", "refId": "E"},
-            {"expr": "sum(rate(node_arednlink_keepalive_outgoing_total{job=\"aredn-metrics\",instance=~\"$instance\"}[5m]))", "legendFormat": "Keepalive out", "refId": "F"}
+            {"expr": "sum(rate(node_arednlink_connection_incoming_total{job=~\"aredn-metrics.*\",instance=~\"$instance\"}[5m]))", "legendFormat": "Connection in", "refId": "A"},
+            {"expr": "sum(rate(node_arednlink_connection_outgoing_total{job=~\"aredn-metrics.*\",instance=~\"$instance\"}[5m]))", "legendFormat": "Connection out", "refId": "B"},
+            {"expr": "sum(rate(node_arednlink_sync_incoming_total{job=~\"aredn-metrics.*\",instance=~\"$instance\"}[5m]))", "legendFormat": "Sync in", "refId": "C"},
+            {"expr": "sum(rate(node_arednlink_sync_outgoing_total{job=~\"aredn-metrics.*\",instance=~\"$instance\"}[5m]))", "legendFormat": "Sync out", "refId": "D"},
+            {"expr": "sum(rate(node_arednlink_keepalive_incoming_total{job=~\"aredn-metrics.*\",instance=~\"$instance\"}[5m]))", "legendFormat": "Keepalive in", "refId": "E"},
+            {"expr": "sum(rate(node_arednlink_keepalive_outgoing_total{job=~\"aredn-metrics.*\",instance=~\"$instance\"}[5m]))", "legendFormat": "Keepalive out", "refId": "F"}
           ],
           "title": "AREDNLink Message Rate",
           "type": "timeseries"
@@ -223,11 +288,11 @@ spec:
           "id": 11,
           "options": {"legend": {"calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
           "targets": [
-            {"expr": "sum(rate(node_arednlink_connection_error_total{job=\"aredn-metrics\",instance=~\"$instance\"}[5m]))", "legendFormat": "Connection errors", "refId": "A"},
-            {"expr": "sum(rate(node_arednlink_version_error_total{job=\"aredn-metrics\",instance=~\"$instance\"}[5m]))", "legendFormat": "Version errors", "refId": "B"},
-            {"expr": "sum(rate(node_arednlink_hop_error_total{job=\"aredn-metrics\",instance=~\"$instance\"}[5m]))", "legendFormat": "Hop errors", "refId": "C"},
-            {"expr": "sum(rate(node_arednlink_command_error_total{job=\"aredn-metrics\",instance=~\"$instance\"}[5m]))", "legendFormat": "Command errors", "refId": "D"},
-            {"expr": "sum(rate(node_arednlink_badcrc_incoming_total{job=\"aredn-metrics\",instance=~\"$instance\"}[5m]))", "legendFormat": "Bad CRC", "refId": "E"}
+            {"expr": "sum(rate(node_arednlink_connection_error_total{job=~\"aredn-metrics.*\",instance=~\"$instance\"}[5m]))", "legendFormat": "Connection errors", "refId": "A"},
+            {"expr": "sum(rate(node_arednlink_version_error_total{job=~\"aredn-metrics.*\",instance=~\"$instance\"}[5m]))", "legendFormat": "Version errors", "refId": "B"},
+            {"expr": "sum(rate(node_arednlink_hop_error_total{job=~\"aredn-metrics.*\",instance=~\"$instance\"}[5m]))", "legendFormat": "Hop errors", "refId": "C"},
+            {"expr": "sum(rate(node_arednlink_command_error_total{job=~\"aredn-metrics.*\",instance=~\"$instance\"}[5m]))", "legendFormat": "Command errors", "refId": "D"},
+            {"expr": "sum(rate(node_arednlink_badcrc_incoming_total{job=~\"aredn-metrics.*\",instance=~\"$instance\"}[5m]))", "legendFormat": "Bad CRC", "refId": "E"}
           ],
           "title": "AREDNLink Error Rate",
           "type": "timeseries"
@@ -238,7 +303,7 @@ spec:
           "gridPos": {"h": 9, "w": 12, "x": 12, "y": 21},
           "id": 12,
           "options": {"cellHeight": "sm", "showHeader": true},
-          "targets": [{"expr": "node_aredn_meshrf{job=\"aredn-metrics\",instance=~\"$instance\"}", "format": "table", "instant": true, "refId": "A"}],
+          "targets": [{"expr": "node_aredn_meshrf{job=~\"aredn-metrics.*\",instance=~\"$instance\"}", "format": "table", "instant": true, "refId": "A"}],
           "title": "Mesh RF",
           "transformations": [{"id": "labelsToFields", "options": {}}],
           "type": "table"
@@ -249,7 +314,7 @@ spec:
           "gridPos": {"h": 8, "w": 24, "x": 0, "y": 30},
           "id": 13,
           "options": {"cellHeight": "sm", "showHeader": true},
-          "targets": [{"expr": "node_aredn_info{job=\"aredn-metrics\",instance=~\"$instance\"}", "format": "table", "instant": true, "refId": "A"}],
+          "targets": [{"expr": "node_aredn_info{job=~\"aredn-metrics.*\",instance=~\"$instance\"}", "format": "table", "instant": true, "refId": "A"}],
           "title": "AREDN Node Information",
           "transformations": [{"id": "labelsToFields", "options": {}}],
           "type": "table"
@@ -261,8 +326,8 @@ spec:
           "id": 14,
           "options": {"legend": {"calcs": ["lastNotNull", "min", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
           "targets": [
-            {"expr": "node_lqm_tracker_snr{job=\"aredn-metrics\",instance=~\"$instance\"}", "legendFormat": "{{hostname}} SNR", "refId": "A"},
-            {"expr": "node_lqm_tracker_rev_snr{job=\"aredn-metrics\",instance=~\"$instance\"}", "legendFormat": "{{hostname}} reverse SNR", "refId": "B"}
+            {"expr": "node_lqm_tracker_snr{job=~\"aredn-metrics.*\",instance=~\"$instance\"}", "legendFormat": "{{hostname}} SNR", "refId": "A"},
+            {"expr": "node_lqm_tracker_rev_snr{job=~\"aredn-metrics.*\",instance=~\"$instance\"}", "legendFormat": "{{hostname}} reverse SNR", "refId": "B"}
           ],
           "title": "RF Signal-to-Noise Ratio",
           "type": "timeseries"
@@ -273,7 +338,7 @@ spec:
           "gridPos": {"h": 8, "w": 12, "x": 12, "y": 38},
           "id": 15,
           "options": {"legend": {"calcs": ["lastNotNull", "min", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
-          "targets": [{"expr": "node_wifi_station_signal{job=\"aredn-metrics\",instance=~\"$instance\"}", "legendFormat": "{{mac}} {{device}}", "refId": "A"}],
+          "targets": [{"expr": "node_wifi_station_signal{job=~\"aredn-metrics.*\",instance=~\"$instance\"}", "legendFormat": "{{mac}} {{device}}", "refId": "A"}],
           "title": "Wi-Fi Station RSSI",
           "type": "timeseries"
         },
@@ -283,7 +348,7 @@ spec:
           "gridPos": {"h": 8, "w": 8, "x": 0, "y": 46},
           "id": 16,
           "options": {"legend": {"calcs": ["lastNotNull", "min", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
-          "targets": [{"expr": "node_lqm_tracker_ping_quality{job=\"aredn-metrics\",instance=~\"$instance\"}", "legendFormat": "{{hostname}}", "refId": "A"}],
+          "targets": [{"expr": "node_lqm_tracker_ping_quality{job=~\"aredn-metrics.*\",instance=~\"$instance\"}", "legendFormat": "{{hostname}}", "refId": "A"}],
           "title": "Ping Quality",
           "type": "timeseries"
         },
@@ -293,7 +358,7 @@ spec:
           "gridPos": {"h": 8, "w": 8, "x": 8, "y": 46},
           "id": 17,
           "options": {"legend": {"calcs": ["lastNotNull", "min", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
-          "targets": [{"expr": "node_lqm_tracker_lq{job=\"aredn-metrics\",instance=~\"$instance\"}", "legendFormat": "{{hostname}}", "refId": "A"}],
+          "targets": [{"expr": "node_lqm_tracker_lq{job=~\"aredn-metrics.*\",instance=~\"$instance\"}", "legendFormat": "{{hostname}}", "refId": "A"}],
           "title": "Link Quality (Exporter Value)",
           "type": "timeseries"
         },
@@ -304,9 +369,9 @@ spec:
           "id": 18,
           "options": {"legend": {"calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
           "targets": [
-            {"expr": "rate(node_lqm_tracker_tx_packets_total{job=\"aredn-metrics\",instance=~\"$instance\"}[5m])", "legendFormat": "{{hostname}} packets", "refId": "A"},
-            {"expr": "rate(node_lqm_tracker_tx_retries_total{job=\"aredn-metrics\",instance=~\"$instance\"}[5m])", "legendFormat": "{{hostname}} retries", "refId": "B"},
-            {"expr": "rate(node_lqm_tracker_tx_fail_total{job=\"aredn-metrics\",instance=~\"$instance\"}[5m])", "legendFormat": "{{hostname}} failures", "refId": "C"}
+            {"expr": "rate(node_lqm_tracker_tx_packets_total{job=~\"aredn-metrics.*\",instance=~\"$instance\"}[5m])", "legendFormat": "{{hostname}} packets", "refId": "A"},
+            {"expr": "rate(node_lqm_tracker_tx_retries_total{job=~\"aredn-metrics.*\",instance=~\"$instance\"}[5m])", "legendFormat": "{{hostname}} retries", "refId": "B"},
+            {"expr": "rate(node_lqm_tracker_tx_fail_total{job=~\"aredn-metrics.*\",instance=~\"$instance\"}[5m])", "legendFormat": "{{hostname}} failures", "refId": "C"}
           ],
           "title": "LQM Transmit Packet Rate",
           "type": "timeseries"
@@ -318,8 +383,8 @@ spec:
           "id": 19,
           "options": {"legend": {"calcs": ["lastNotNull", "min", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
           "targets": [
-            {"expr": "100 * rate(node_lqm_tracker_tx_retries_total{job=\"aredn-metrics\",instance=~\"$instance\"}[5m]) / (rate(node_lqm_tracker_tx_packets_total{job=\"aredn-metrics\",instance=~\"$instance\"}[5m]) + rate(node_lqm_tracker_tx_retries_total{job=\"aredn-metrics\",instance=~\"$instance\"}[5m]))", "legendFormat": "{{hostname}} retry rate", "refId": "A"},
-            {"expr": "100 * rate(node_lqm_tracker_tx_fail_total{job=\"aredn-metrics\",instance=~\"$instance\"}[5m]) / (rate(node_lqm_tracker_tx_packets_total{job=\"aredn-metrics\",instance=~\"$instance\"}[5m]) + rate(node_lqm_tracker_tx_retries_total{job=\"aredn-metrics\",instance=~\"$instance\"}[5m]))", "legendFormat": "{{hostname}} error rate", "refId": "B"}
+            {"expr": "100 * rate(node_lqm_tracker_tx_retries_total{job=~\"aredn-metrics.*\",instance=~\"$instance\"}[5m]) / (rate(node_lqm_tracker_tx_packets_total{job=~\"aredn-metrics.*\",instance=~\"$instance\"}[5m]) + rate(node_lqm_tracker_tx_retries_total{job=~\"aredn-metrics.*\",instance=~\"$instance\"}[5m]))", "legendFormat": "{{hostname}} retry rate", "refId": "A"},
+            {"expr": "100 * rate(node_lqm_tracker_tx_fail_total{job=~\"aredn-metrics.*\",instance=~\"$instance\"}[5m]) / (rate(node_lqm_tracker_tx_packets_total{job=~\"aredn-metrics.*\",instance=~\"$instance\"}[5m]) + rate(node_lqm_tracker_tx_retries_total{job=~\"aredn-metrics.*\",instance=~\"$instance\"}[5m]))", "legendFormat": "{{hostname}} error rate", "refId": "B"}
           ],
           "title": "LQM Transmit Retry and Error Rate",
           "type": "timeseries"
@@ -333,13 +398,13 @@ spec:
           {
             "current": {"selected": false, "text": "All", "value": "$__all"},
             "datasource": {"type": "prometheus", "uid": "prometheus"},
-            "definition": "label_values(up{job=\"aredn-metrics\"}, instance)",
+            "definition": "label_values(up{job=~\"aredn-metrics.*\"}, instance)",
             "includeAll": true,
             "label": "Instance",
             "multi": true,
             "name": "instance",
             "options": [],
-            "query": {"query": "label_values(up{job=\"aredn-metrics\"}, instance)", "refId": "PrometheusVariableQueryEditor-VariableQuery"},
+            "query": {"query": "label_values(up{job=~\"aredn-metrics.*\"}, instance)", "refId": "PrometheusVariableQueryEditor-VariableQuery"},
             "refresh": 1,
             "regex": "",
             "type": "query"
